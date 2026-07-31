@@ -1,4 +1,11 @@
 /**
+ * @typedef {Object} Note
+ * @property {string} text - The content of the note.
+ * @property {string} date - Shamsi date string.
+ * @property {string} time - Time string.
+ */
+
+/**
  * @typedef {Object} Node
  * @property {string} id - Unique identifier for the node.
  * @property {'header'|'task'} type - Type of the node.
@@ -6,7 +13,7 @@
  * @property {string} [note] - Description for tasks.
  * @property {boolean} [done] - Completion status for tasks.
  * @property {string|null} parent - ID of the parent node.
- * @property {Array} [notes] - Array of notes attached to the task.
+ * @property {Note[]} [notes] - Array of notes attached to the task.
  * @property {number} x - X coordinate on canvas.
  * @property {number} y - Y coordinate on canvas.
  */
@@ -22,7 +29,21 @@
  * @property {string|null} parent - Parent of the first node in the group.
  */
 
-/** @type {Object<string, HTMLElement>} */
+/**
+ * @typedef {Object} DragData
+ * @property {'move-node'|'new-connection'|'move-connection'} type - Type of drag action.
+ * @property {HTMLElement} [el] - The element being dragged.
+ * @property {number} [startX] - Initial mouse X position.
+ * @property {number} [startY] - Initial mouse Y position.
+ * @property {number} [initX] - Initial element X position.
+ * @property {number} [initY] - Initial element Y position.
+ * @property {boolean} [moved] - Whether the element was actually moved.
+ * @property {Node} [sourceNode] - Source node for connections.
+ * @property {Node} [targetNode] - Target node for moving connections.
+ * @property {SVGPathElement} [tempLine] - Temporary SVG path during connection drag.
+ */
+
+/** @type {Object<string, HTMLElement | NodeListOf<HTMLElement>>} */
 const dom = {
   canvas: document.getElementById("canvas"),
   svgLayer: document.getElementById("connections-layer"),
@@ -51,7 +72,7 @@ let nodes = [];
 let currentMode = "pan";
 /** @type {HTMLElement|null} */
 let activeEl = null;
-/** @type {Object|null} */
+/** @type {DragData|null} */
 let dragData = null;
 /** @type {boolean} */
 let isDrawing = false;
@@ -99,6 +120,7 @@ function initDB() {
 
 /**
  * Loads nodes from the database and renders them.
+ * @returns {void}
  */
 function loadNodes() {
   const tx = db.transaction("nodes", "readonly");
@@ -135,6 +157,7 @@ function loadNodes() {
 /**
  * Saves or updates a node in the database.
  * @param {Node} node - The node to save.
+ * @returns {void}
  */
 function saveNode(node) {
   const tx = db.transaction("nodes", "readwrite");
@@ -144,6 +167,7 @@ function saveNode(node) {
 /**
  * Deletes a node from the database.
  * @param {string} id - The ID of the node to delete.
+ * @returns {void}
  */
 function deleteNodeDB(id) {
   const tx = db.transaction("nodes", "readwrite");
@@ -174,21 +198,21 @@ function getCurrentTime() {
   });
 }
 
-/** Hides all context menus. */
+/** Hides all context menus. @returns {void} */
 function hideAllMenus() {
   dom.contextMenu.classList.add("hidden");
   dom.elementMenu.classList.add("hidden");
   dom.notesMenu.classList.add("hidden");
 }
 
-/** Hides all modal dialogs. */
+/** Hides all modal dialogs. @returns {void} */
 function hideAllModals() {
   dom.inputModal.classList.add("hidden");
   dom.noteModal.classList.add("hidden");
   dom.confirmModal.classList.add("hidden");
 }
 
-/** Hides the group tooltip. */
+/** Hides the group tooltip. @returns {void} */
 function hideGroupTooltip() {
   dom.groupTooltip.classList.add("hidden");
   dom.groupTooltip.innerHTML = "";
@@ -441,6 +465,7 @@ function computeGroups() {
 /**
  * Displays the group tooltip showing all tasks inside the group.
  * @param {Group} group - The group to display.
+ * @returns {void}
  */
 function showGroupTooltip(group) {
   dom.groupTooltip.innerHTML = "";
@@ -520,6 +545,7 @@ function showGroupTooltip(group) {
  * Sets the done status of a node and updates its parents/children accordingly.
  * @param {Node} node - The node to update.
  * @param {boolean} doneStatus - The new done status.
+ * @returns {void}
  */
 function setNodeDoneStatus(node, doneStatus) {
   if (node.type !== "task") return;
@@ -552,6 +578,7 @@ function setNodeDoneStatus(node, doneStatus) {
  * @param {number} x - X coordinate for modal.
  * @param {number} y - Y coordinate for modal.
  * @param {Node} [node] - The node being edited, if any.
+ * @returns {void}
  */
 function showInputModal(type, x, y, node = null) {
   editingNodeId = node ? node.id : null;
@@ -616,6 +643,7 @@ document.getElementById("btn-save").addEventListener("click", () => {
  * @param {number} x - X coordinate.
  * @param {number} y - Y coordinate.
  * @param {Node} node - The node.
+ * @returns {void}
  */
 function showNotesMenu(x, y, node) {
   positionFloating(dom.notesMenu, x, y);
@@ -625,6 +653,7 @@ function showNotesMenu(x, y, node) {
 /**
  * Renders the list of notes in the notes menu.
  * @param {Node} node - The node whose notes are being rendered.
+ * @returns {void}
  */
 function renderNotesList(node) {
   dom.notesList.innerHTML = "";
@@ -684,6 +713,7 @@ document
  * @param {boolean} isEditing - Whether it's editing an existing note.
  * @param {number} index - The index of the note being edited.
  * @param {string} text - The text of the note.
+ * @returns {void}
  */
 function openNoteModal(isEditing, index, text) {
   editingNoteIndex = index;
@@ -735,6 +765,7 @@ document.getElementById("confirm-no").addEventListener("click", () => {
 
 /**
  * Main render function for all nodes and groups on the canvas.
+ * @returns {void}
  */
 function renderNodes() {
   dom.canvas.querySelectorAll(".node").forEach((el) => el.remove());
@@ -767,7 +798,7 @@ function renderNodes() {
 
     const label = document.createElement("div");
     label.className = "task-label";
-    label.innerText = `${chain.length} وظیفه‌ی انجام‌شده`;
+    label.innerText = `${chain.length.toLocaleString("fa-IR")} وظیفه‌ی انجام‌شده`;
     el.appendChild(label);
 
     const icon = document.createElement("div");
@@ -875,6 +906,7 @@ function renderNodes() {
 /**
  * Handles mousedown event for dragging nodes.
  * @param {MouseEvent} e - The mouse event.
+ * @returns {void}
  */
 function handleNodeMouseDown(e) {
   if (e.button !== 0 || currentMode !== "move") return;
@@ -899,6 +931,7 @@ function handleNodeMouseDown(e) {
  * @param {MouseEvent} e - The mouse event.
  * @param {Node} node - The node owning the port.
  * @param {'left'|'right'} portType - The port type.
+ * @returns {void}
  */
 function handlePortMouseDown(e, node, portType) {
   if (e.button !== 0 || currentMode !== "move") return;
@@ -921,6 +954,7 @@ function handlePortMouseDown(e, node, portType) {
 /**
  * Handles mousemove event during dragging.
  * @param {MouseEvent} e - The mouse event.
+ * @returns {void}
  */
 function handleDrag(e) {
   if (!dragData) return;
@@ -988,6 +1022,7 @@ function handleDrag(e) {
  * Pushes a node (or its group) down by a specified amount to resolve overlaps.
  * @param {Node} movedNode - The node being pushed.
  * @param {number} amount - The amount to push down.
+ * @returns {void}
  */
 function applyPush(movedNode, amount) {
   if (groupedIds.has(movedNode.id) && groupMap[movedNode.id]) {
@@ -1006,6 +1041,7 @@ function applyPush(movedNode, amount) {
 /**
  * Resolves overlaps between a moved node and other nodes/connections.
  * @param {Node} movedNode - The node that was moved.
+ * @returns {void}
  */
 function resolveOverlaps(movedNode) {
   groups = computeGroups();
@@ -1153,6 +1189,7 @@ function resolveOverlaps(movedNode) {
 /**
  * Handles mouseup event to finalize dragging.
  * @param {MouseEvent} e - The mouse event.
+ * @returns {void}
  */
 function handleDragEnd(e) {
   if (!dragData) return;
@@ -1249,7 +1286,7 @@ function isAncestor(potentialAncestorId, nodeId) {
   return false;
 }
 
-/** Throttles drawing of connections using requestAnimationFrame. */
+/** Throttles drawing of connections using requestAnimationFrame. @returns {void} */
 function requestDraw() {
   if (!isDrawing) {
     isDrawing = true;
@@ -1260,7 +1297,7 @@ function requestDraw() {
   }
 }
 
-/** Draws all connection lines between nodes on the SVG layer. */
+/** Draws all connection lines between nodes on the SVG layer. @returns {void} */
 function drawConnections() {
   dom.svgLayer.innerHTML = "";
   const canvasRect = dom.canvas.getBoundingClientRect();
@@ -1311,7 +1348,11 @@ function drawConnections() {
   });
 }
 
-/** Automatically arranges all nodes smoothly on the canvas. */
+/**
+ * Automatically arranges all nodes smoothly on the canvas.
+ * Also pans the canvas into view if the content is outside the viewport.
+ * @returns {void}
+ */
 function autoArrange() {
   groups = computeGroups();
   groupedIds = new Set();
@@ -1339,10 +1380,52 @@ function autoArrange() {
   let currentY = 50;
   roots.forEach((root) => {
     const bounds = layoutTree(root, 300, currentY);
-    currentY = bounds.maxY + 25;
+    currentY = bounds.maxY + 25.7;
   });
 
   nodes.forEach((node) => saveNode(node));
+
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
+  nodes.forEach((node) => {
+    if (groupedIds.has(node.id) && !groupMap[node.id]) return;
+    minX = Math.min(minX, node.x);
+    minY = Math.min(minY, node.y);
+    const el = getRenderedEl(node.id);
+    const w = el ? el.offsetWidth : FALLBACK_WIDTH;
+    const h = el ? el.offsetHeight : FALLBACK_HEIGHT;
+    maxX = Math.max(maxX, node.x + w);
+    maxY = Math.max(maxY, node.y + h);
+  });
+
+  const cLeft = parseInt(dom.canvas.style.left || 0);
+  const cTop = parseInt(dom.canvas.style.top || 0);
+
+  const isFullyOutside = !(
+    cLeft + maxX > 0 &&
+    cLeft + minX < window.innerWidth &&
+    cTop + maxY > 0 &&
+    cTop + minY < window.innerHeight
+  );
+
+  let canvasPanned = false;
+  if (isFullyOutside && !isNaN(minX)) {
+    const targetScreenX = window.innerWidth * 0.75;
+    const targetScreenY = window.innerHeight * 0.35;
+
+    const newCanvasLeft = targetScreenX - maxX;
+    const newCanvasTop = targetScreenY - minY;
+
+    dom.canvas.style.transition = "left 0.3s ease, top 0.3s ease";
+    dom.canvas.style.left = `${newCanvasLeft}px`;
+    dom.canvas.style.top = `${newCanvasTop}px`;
+
+    localStorage.setItem("canvasX", newCanvasLeft);
+    localStorage.setItem("canvasY", newCanvasTop);
+    canvasPanned = true;
+  }
 
   nodes.forEach((node) => {
     if (groupedIds.has(node.id) && !groupMap[node.id]) return;
@@ -1375,14 +1458,21 @@ function autoArrange() {
         const el = getRenderedEl(node.id);
         if (el) el.classList.remove("smooth-arrange");
       });
+      if (canvasPanned) {
+        dom.canvas.style.transition = "";
+      }
     }
   }
   requestAnimationFrame(animateLoop);
 }
 
+/** Horizontal gap between parent and child nodes. */
 const GAP = 70;
+/** Vertical gap between sibling nodes. */
 const VERTICAL_GAP = 25;
+/** Fallback height for nodes if DOM measurement fails. */
 const FALLBACK_HEIGHT = 40;
+/** Fallback width for nodes if DOM measurement fails. */
 const FALLBACK_WIDTH = 150;
 
 /**
@@ -1426,7 +1516,6 @@ function layoutTree(node, x, y) {
     totalMaxY = Math.max(totalMaxY, childBounds.maxY);
   });
 
-  // تراز کردن سرفصل (والد) با اولین ردیف وظایف (از نظر مرکز عمودی)
   node.y = y + firstChildH / 2 - h / 2;
 
   if (groupMap[node.id]) {
@@ -1444,7 +1533,7 @@ function layoutTree(node, x, y) {
   };
 }
 
-/** @type {Object|null} */
+/** @type {{startX: number, startY: number, initLeft: number, initTop: number} | null} */
 let panData = null;
 
 /** Event listener for canvas panning. */
@@ -1464,6 +1553,7 @@ document.getElementById("canvas-wrapper").addEventListener("mousedown", (e) => {
 /**
  * Handles mousemove for canvas panning.
  * @param {MouseEvent} e - The mouse event.
+ * @returns {void}
  */
 function handlePan(e) {
   if (!panData) return;
@@ -1472,7 +1562,7 @@ function handlePan(e) {
   requestDraw();
 }
 
-/** Ends canvas panning and saves coordinates. */
+/** Ends canvas panning and saves coordinates. @returns {void} */
 function endPan() {
   localStorage.setItem("canvasX", parseInt(dom.canvas.style.left) || 0);
   localStorage.setItem("canvasY", parseInt(dom.canvas.style.top) || 0);
@@ -1486,6 +1576,7 @@ function endPan() {
  * @param {HTMLElement} el - The element to position.
  * @param {number} x - Target X coordinate.
  * @param {number} y - Target Y coordinate.
+ * @returns {void}
  */
 function positionFloating(el, x, y) {
   el.style.top = `${y}px`;
@@ -1514,6 +1605,7 @@ function positionFloating(el, x, y) {
  * Positions the group tooltip safely within viewport bounds.
  * @param {HTMLElement} el - The tooltip element.
  * @param {DOMRect} anchorRect - The bounding rect of the anchor node.
+ * @returns {void}
  */
 function positionGroupTooltip(el, anchorRect) {
   const margin = 10;
@@ -1544,6 +1636,7 @@ function positionGroupTooltip(el, anchorRect) {
  * Positions the hover box safely within viewport bounds.
  * @param {number} clientX - Mouse X coordinate.
  * @param {number} clientY - Mouse Y coordinate.
+ * @returns {void}
  */
 function positionHoverBox(clientX, clientY) {
   const margin = 10;
