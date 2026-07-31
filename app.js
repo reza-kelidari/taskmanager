@@ -127,20 +127,8 @@ function loadNodes() {
   const store = tx.objectStore("nodes");
   store.getAll().onsuccess = (e) => {
     nodes = e.target.result || [];
+
     nodes.forEach((node) => {
-      if (
-        node.comments &&
-        node.comments.length > 0 &&
-        (!node.notes || node.notes.length === 0)
-      ) {
-        node.notes = node.comments.map((c) => ({
-          text: c,
-          date: "نامشخص",
-          time: "",
-        }));
-        delete node.comments;
-        saveNode(node);
-      }
       if (!node.notes) node.notes = [];
     });
 
@@ -611,7 +599,7 @@ document.getElementById("btn-save").addEventListener("click", () => {
   } else {
     const rect = dom.canvas.getBoundingClientRect();
     const newNode = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       type,
       title,
       note,
