@@ -598,8 +598,29 @@ document.getElementById("btn-save").addEventListener("click", () => {
     saveNode(node);
   } else {
     const rect = dom.canvas.getBoundingClientRect();
+
+    // تابع تولید آیدی امن (در صورت وجود) یا استفاده از روش جایگزین
+    const generateId = () => {
+      if (
+        typeof crypto !== "undefined" &&
+        typeof crypto.randomUUID === "function"
+      ) {
+        return crypto.randomUUID();
+      } else {
+        // روش جایگزین برای محیط‌های غیر امن (file://)
+        return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+          /[xy]/g,
+          function (c) {
+            const r = (Math.random() * 16) | 0,
+              v = c == "x" ? r : (r & 0x3) | 0x8;
+            return v.toString(16);
+          },
+        );
+      }
+    };
+
     const newNode = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       type,
       title,
       note,
@@ -623,6 +644,21 @@ document.getElementById("btn-save").addEventListener("click", () => {
     );
     if (group) showGroupTooltip(group);
     else hideGroupTooltip();
+  }
+});
+
+/** Event listener for Enter key to save node/note from modals. */
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !dom.inputModal.classList.contains("hidden")) {
+    if (e.target.tagName !== "TEXTAREA" || e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      document.getElementById("btn-save").click();
+    }
+  } else if (e.key === "Enter" && !dom.noteModal.classList.contains("hidden")) {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      document.getElementById("save-note-btn").click();
+    }
   }
 });
 
@@ -1355,15 +1391,31 @@ function autoArrange() {
     chain.forEach((n) => groupedIds.add(n.id));
   });
 
+  const roots = nodes.filter(
+    (n) => !n.parent && !(groupedIds.has(n.id) && !groupMap[n.id]),
+  );
+
+  if (roots.length === 0) {
+    const targetScreenX = window.innerWidth / 2;
+    const targetScreenY = window.innerHeight / 2;
+
+    dom.canvas.style.transition = "left 0.3s ease, top 0.3s ease";
+    dom.canvas.style.left = `${targetScreenX}px`;
+    dom.canvas.style.top = `${targetScreenY}px`;
+
+    localStorage.setItem("canvasX", targetScreenX);
+    localStorage.setItem("canvasY", targetScreenY);
+
+    setTimeout(() => {
+      dom.canvas.style.transition = "";
+    }, 350);
+    return;
+  }
+
   renderNodes();
 
   const oldPos = {};
   nodes.forEach((n) => (oldPos[n.id] = { x: n.x, y: n.y }));
-
-  const roots = nodes.filter(
-    (n) => !n.parent && !(groupedIds.has(n.id) && !groupMap[n.id]),
-  );
-  if (roots.length === 0) return;
 
   let currentY = 50;
   roots.forEach((root) => {
