@@ -57,20 +57,17 @@ header {
 .tool-btn:hover {
   background: rgba(0, 0, 0, 0.05);
 }
-
 .tool-btn.active {
   background: #e0f0ff;
   color: #007bff;
   border-color: #b0dfff;
 }
-
 .separator {
   width: 1px;
   height: 24px;
   background-color: #e8e8e8;
   margin: 0 5px;
 }
-
 #tool-arrange:hover {
   background: rgba(0, 0, 0, 0.05);
 }
@@ -118,7 +115,6 @@ body.mode-move .connection-point {
   width: 1px;
   height: 1px;
 }
-
 #connections-layer {
   position: absolute;
   top: 0;
@@ -129,7 +125,6 @@ body.mode-move .connection-point {
   z-index: 1;
   overflow: visible;
 }
-
 #empty-state {
   position: absolute;
   top: 0px;
@@ -141,9 +136,8 @@ body.mode-move .connection-point {
 
 .node {
   position: absolute;
-  z-index: 2;
+  z-index: 1;
 }
-
 .node.smooth-arrange {
   transition:
     left 0.3s ease,
@@ -171,6 +165,19 @@ body.mode-move .connection-point {
   border-radius: 999px;
   white-space: nowrap;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+}
+
+.group-node {
+  cursor: pointer !important;
+}
+
+/* اصلاح فاصله آیکون > */
+.group-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 15px; /* فاصله از متن سمت راست */
+  margin-left: -5px; /* نزدیک‌تر شدن به لبه سمت چپ */
 }
 
 .task-label {
@@ -209,7 +216,6 @@ body.mode-move .cp-left {
   top: 50%;
   transform: translateY(-50%);
 }
-
 body.mode-move .has-parent .cp-right {
   opacity: 1;
   pointer-events: all;
@@ -219,14 +225,12 @@ body.mode-move .has-parent .cp-right {
   top: 50%;
   transform: translateY(-50%);
 }
-
 .node.header .cp-right {
   right: -5px;
 }
 .node.header .cp-left {
   left: -16px;
 }
-
 .connection-point:hover {
   transform: translateY(-50%) scale(1.2);
 }
@@ -243,7 +247,7 @@ body.mode-move .has-parent .cp-right {
   background: #fff;
   border: 1px solid #e8e8e8;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-  z-index: 2000;
+  z-index: 4;
   min-width: 150px;
   padding: 10px;
   border-radius: 20px;
@@ -257,7 +261,6 @@ body.mode-move .has-parent .cp-right {
 #notes-menu {
   min-width: 250px;
 }
-
 .notes-header {
   display: flex;
   align-items: center;
@@ -293,7 +296,7 @@ body.mode-move .has-parent .cp-right {
   background: #fff;
   border: 1px solid #e8e8e8;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-  z-index: 3000;
+  z-index: 5;
   padding: 10px;
   border-radius: 20px;
   width: 250px;
@@ -315,7 +318,6 @@ body.mode-move .has-parent .cp-right {
   font-size: 14px;
   text-align: justify;
 }
-
 #input-note,
 #note-text-input {
   resize: vertical;
@@ -344,8 +346,8 @@ body.mode-move .has-parent .cp-right {
   border-radius: 20px;
   padding: 10px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  z-index: 1500;
-  width: 160px;
+  z-index: 3;
+  min-width: 250px;
   pointer-events: none;
   max-height: 300px;
   overflow-y: auto;
@@ -387,20 +389,16 @@ body.mode-move .has-parent .cp-right {
   border-radius: 10px;
   margin-top: 5px;
 }
-
 .note-text-container {
   flex: 1;
   margin-left: 10px;
   overflow: hidden;
 }
-
-/* فاصله تاریخ تا متن افزایش یافت و برای منو و تول‌تیپ یکسان شد */
 .note-meta {
   font-size: 10px;
   color: #888;
   margin-bottom: 8px;
 }
-
 .note-text-preview {
   font-size: 12px;
   color: #555;
@@ -410,13 +408,11 @@ body.mode-move .has-parent .cp-right {
   max-width: 140px;
   text-align: justify;
 }
-
 .note-actions {
   display: flex;
   gap: 5px;
   flex-shrink: 0;
 }
-
 .note-action-btn {
   background: none;
   border: none;
@@ -431,4 +427,48 @@ body.mode-move .has-parent .cp-right {
 }
 .delete-btn:hover {
   color: #dc3545;
+}
+
+#group-tooltip {
+  position: fixed;
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 20px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 10px;
+  z-index: 2;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  pointer-events: none;
+  max-width: 90vw;
+  flex-wrap: wrap;
+}
+
+#group-tooltip .node,
+#group-tooltip .green-dot {
+  pointer-events: auto;
+}
+
+.dash-line {
+  border-top: 2px dashed #ccc;
+  width: 30px;
+  min-width: 20px;
+  flex: 1;
+}
+
+.green-dot {
+  width: 10px;
+  height: 10px;
+  background-color: #28a745;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+#group-tooltip .node.task {
+  position: relative !important;
+  left: auto !important;
+  top: auto !important;
+  cursor: pointer !important;
 }
