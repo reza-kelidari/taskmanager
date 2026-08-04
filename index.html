@@ -3,6 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="مدیریت وظایف روزانه با رابط کاربری بصری"
+    />
     <title>مدیریت وظایف روزانه</title>
     <link rel="stylesheet" href="style.css" />
     <link
@@ -10,44 +14,14 @@
       rel="stylesheet"
     />
   </head>
-  <body class="mode-pan" dir="rtl" lang="fa">
-    <div class="tools">
-      <button id="tool-pan" class="tool-btn active" title="جابجایی در محیط">
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"></path>
-          <path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"></path>
-          <path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"></path>
-          <path
-            d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"
-          ></path>
-        </svg>
-      </button>
-      <button id="tool-move" class="tool-btn" title="ویرایش و اتصال">
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"></path>
-          <path d="M13 13l6 6"></path>
-        </svg>
-      </button>
-      <div class="separator"></div>
-      <button id="tool-arrange" class="tool-btn" title="چینش خودکار">
+  <body dir="rtl" lang="fa">
+    <div class="tools" role="toolbar" aria-label="ابزارها">
+      <button
+        id="tool-arrange"
+        class="tool-btn"
+        title="چینش خودکار"
+        aria-label="چینش خودکار"
+      >
         <svg
           width="18"
           height="18"
@@ -69,7 +43,178 @@
           <path d="M12.2 6.2 11 5" />
         </svg>
       </button>
+      <button
+        id="tool-search"
+        class="tool-btn"
+        title="جستجو (Ctrl+F)"
+        aria-label="جستجو"
+      >
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.3-4.3"></path>
+        </svg>
+      </button>
+      <div class="separator"></div>
+      <button
+        id="tool-redo"
+        class="tool-btn"
+        title="از نو (Ctrl+Y)"
+        aria-label="از نو"
+        disabled
+      >
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M21 7v6h-6"></path>
+          <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"></path>
+        </svg>
+      </button>
+      <button
+        id="tool-undo"
+        class="tool-btn"
+        title="بازگشت (Ctrl+Z)"
+        aria-label="بازگشت"
+        disabled
+      >
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M3 7v6h6"></path>
+          <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path>
+        </svg>
+      </button>
+      <div class="separator"></div>
+      <button
+        id="tool-more"
+        class="tool-btn"
+        title="امکانات بیشتر"
+        aria-label="منوی امکانات"
+      >
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <circle cx="12" cy="12" r="1"></circle>
+          <circle cx="12" cy="5" r="1"></circle>
+          <circle cx="12" cy="19" r="1"></circle>
+        </svg>
+      </button>
     </div>
+
+    <div
+      id="more-menu"
+      class="context-menu hidden"
+      role="menu"
+      aria-label="منوی امکانات"
+    >
+      <div
+        class="menu-item"
+        data-action="dark-mode"
+        role="menuitem"
+        tabindex="0"
+      >
+        <svg
+          class="icon-moon"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+        <svg
+          class="icon-sun"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <circle cx="12" cy="12" r="4"></circle>
+          <path d="M12 2v2"></path>
+          <path d="M12 20v2"></path>
+          <path d="m4.93 4.93 1.41 1.41"></path>
+          <path d="m17.66 17.66 1.41 1.41"></path>
+          <path d="M2 12h2"></path>
+          <path d="M20 12h2"></path>
+          <path d="m6.34 17.66-1.41 1.41"></path>
+          <path d="m19.07 4.93-1.41 1.41"></path>
+        </svg>
+        <span>حالت تاریک/روشن</span>
+      </div>
+      <div class="menu-item" data-action="export" role="menuitem" tabindex="0">
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        <span>خروجی (Ctrl+E)</span>
+      </div>
+      <div class="menu-item" data-action="import" role="menuitem" tabindex="0">
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+        <span>ورود (Ctrl+I)</span>
+      </div>
+    </div>
+
+    <input type="file" id="file-import" accept=".json" style="display: none" />
 
     <div id="canvas-wrapper">
       <div id="canvas" style="left: 0px; top: 0px">
@@ -78,23 +223,76 @@
       </div>
     </div>
 
-    <div id="date-display">تاریخ شمسی</div>
+    <div id="date-display" aria-live="polite">تاریخ شمسی</div>
 
-    <div id="context-menu" class="context-menu hidden">
-      <div class="menu-item" data-action="new-header">سرفصل جدید</div>
-      <div class="menu-item" data-action="new-task">وظیفه جدید</div>
+    <div
+      id="context-menu"
+      class="context-menu hidden"
+      role="menu"
+      aria-label="منوی زمینه"
+    >
+      <div
+        class="menu-item"
+        data-action="new-header"
+        role="menuitem"
+        tabindex="0"
+      >
+        سرفصل جدید
+      </div>
+      <div
+        class="menu-item"
+        data-action="new-task"
+        role="menuitem"
+        tabindex="0"
+      >
+        وظیفه جدید
+      </div>
     </div>
 
-    <div id="element-menu" class="context-menu hidden">
-      <div class="menu-item" data-action="edit">ویرایش</div>
-      <div class="menu-item" data-action="delete">حذف</div>
-      <div class="menu-item" data-action="toggle-done">انجام شده</div>
-      <div class="menu-item" data-action="comments">یادداشت‌ها</div>
+    <div
+      id="element-menu"
+      class="context-menu hidden"
+      role="menu"
+      aria-label="منوی عنصر"
+    >
+      <div class="menu-item" data-action="edit" role="menuitem" tabindex="0">
+        ویرایش
+      </div>
+      <div class="menu-item" data-action="delete" role="menuitem" tabindex="0">
+        حذف
+      </div>
+      <div
+        class="menu-item"
+        data-action="toggle-done"
+        role="menuitem"
+        tabindex="0"
+      >
+        انجام شده
+      </div>
+      <div
+        class="menu-item"
+        data-action="comments"
+        role="menuitem"
+        tabindex="0"
+      >
+        یادداشت‌ها
+      </div>
     </div>
 
-    <div id="notes-menu" class="context-menu hidden">
+    <div
+      id="notes-menu"
+      class="context-menu hidden"
+      role="dialog"
+      aria-label="یادداشت‌ها"
+    >
       <div class="notes-header">
-        <div class="menu-item" id="back-from-notes" title="بازگشت">
+        <div
+          class="menu-item"
+          id="back-from-notes"
+          title="بازگشت"
+          tabindex="0"
+          role="button"
+        >
           <svg
             width="16"
             height="16"
@@ -112,6 +310,8 @@
           class="menu-item"
           id="add-note-btn"
           style="flex: 1; text-align: right"
+          tabindex="0"
+          role="button"
         >
           افزودن یادداشت
         </div>
@@ -119,31 +319,42 @@
       <div id="notes-list"></div>
     </div>
 
-    <div id="input-modal" class="hidden">
+    <div
+      id="input-modal"
+      class="hidden"
+      role="dialog"
+      aria-label="ورود اطلاعات"
+    >
       <div class="modal-content">
         <input
           type="text"
           id="input-title"
           placeholder="عنوان (حداکثر ۲۵ کاراکتر)"
           maxlength="25"
+          aria-label="عنوان"
         />
         <textarea
           id="input-note"
           placeholder="توضیحات"
           style="display: none"
+          aria-label="توضیحات"
         ></textarea>
         <button id="btn-save">ذخیره</button>
       </div>
     </div>
 
-    <div id="note-modal" class="hidden">
+    <div id="note-modal" class="hidden" role="dialog" aria-label="یادداشت">
       <div class="modal-content">
-        <textarea id="note-text-input" placeholder="متن یادداشت"></textarea>
+        <textarea
+          id="note-text-input"
+          placeholder="متن یادداشت"
+          aria-label="متن یادداشت"
+        ></textarea>
         <button id="save-note-btn">ذخیره یادداشت</button>
       </div>
     </div>
 
-    <div id="confirm-modal" class="hidden">
+    <div id="confirm-modal" class="hidden" role="dialog" aria-label="تایید حذف">
       <div class="modal-content">
         <p
           id="confirm-text"
@@ -184,9 +395,27 @@
       </div>
     </div>
 
-    <div id="hover-box" class="hidden"></div>
-    <div id="group-tooltip" class="hidden"></div>
+    <div id="search-modal" class="hidden" role="dialog" aria-label="جستجو">
+      <div class="modal-content">
+        <input
+          type="text"
+          id="search-input"
+          placeholder="جستجو در همه‌جا"
+          aria-label="جستجو"
+        />
+        <div id="search-results"></div>
+      </div>
+    </div>
 
-    <script src="app.js"></script>
+    <div id="hover-box" class="hidden" role="tooltip"></div>
+
+    <div
+      id="toast-container"
+      class="toast-container"
+      role="alert"
+      aria-live="polite"
+    ></div>
+
+    <script type="module" src="js/app.js"></script>
   </body>
 </html>
