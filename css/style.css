@@ -1,3 +1,12 @@
+/* ==================== Fonts ==================== */
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/statics/vazirmatn.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* ==================== Variables ==================== */
 :root {
   --bg-primary: #ffffff;
@@ -398,7 +407,6 @@ body.dark-mode #more-menu .icon-moon {
 .modal-content {
   display: flex;
   flex-direction: column;
-
 }
 
 #input-title,
