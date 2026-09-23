@@ -3,7 +3,7 @@ import { dom, positionHoverBox } from "./dom.js";
 import { CONFIG } from "./config.js";
 import { showToast, getShamsiDate, shouldShowHoverBox } from "./utils.js";
 import { errorReporter } from "./error.js";
-import { initDB, saveNode, loadNodes } from "./db.js";
+import { initDB, saveNode, loadNodes, deleteNodeDB } from "./db.js";
 import { history } from "./history.js";
 import { renderNodes, getRenderedEl } from "./renderer.js";
 import { showHoverBox } from "./hover.js";
@@ -78,62 +78,100 @@ function handleCanvasMouseOut(e) {
 // ============================================================
 
 function autoArrange() {
-  renderNodes();
-  const oldPos = {};
-  state.nodes.forEach((n) => (oldPos[n.id] = { x: n.x, y: n.y }));
+  const allNodes = state.nodes;
+  const filterOn = document.body.classList.contains("filter-active");
 
-  const roots = state.nodes.filter((n) => !n.parent);
+  const layoutNodes = filterOn
+    ? allNodes.filter((n) => !(n.type === "task" && n.done))
+    : allNodes;
 
-  if (roots.length === 0) {
-    panCanvas(window.innerWidth / 2, window.innerHeight / 2);
-    return;
+  if (layoutNodes.length === 0) return;
+
+  const layoutIds = new Set(layoutNodes.map((n) => String(n.id)));
+
+  const savedParents = new Map();
+  if (filterOn) {
+    layoutNodes.forEach((n) => {
+      if (!n.parent || layoutIds.has(String(n.parent))) return;
+      let ancId = n.parent;
+      let visibleAnc = null;
+      const guard = new Set();
+      while (ancId && !guard.has(String(ancId))) {
+        guard.add(String(ancId));
+        if (layoutIds.has(String(ancId))) {
+          visibleAnc = ancId;
+          break;
+        }
+        const ancNode = allNodes.find((m) => String(m.id) === String(ancId));
+        ancId = ancNode?.parent ?? null;
+      }
+      savedParents.set(String(n.id), n.parent);
+      n.parent = visibleAnc;
+    });
   }
 
-  let currentY = CONFIG.CANVAS_INITIAL_Y_OFFSET;
-  roots.forEach((root) => {
-    const bounds = layoutTree(root, 300, currentY);
-    currentY = bounds.maxY + 25.7;
-  });
+  state.nodes = layoutNodes;
+  try {
+    renderNodes();
 
-  state.nodes.forEach(saveNode);
-  history.push(state.nodes);
+    const oldPos = {};
+    layoutNodes.forEach((n) => (oldPos[n.id] = { x: n.x, y: n.y }));
 
-  const { minX, minY, maxX, maxY } = computeBounds();
-  const canvasPanned = maybeAutoPan(minX, minY, maxX, maxY);
+    const roots = layoutNodes.filter((n) => !n.parent);
+    if (roots.length === 0) return;
 
-  state.nodes.forEach((node) => {
-    const el = getRenderedEl(node.id);
-    if (el) {
-      el.style.left = `${oldPos[node.id].x}px`;
-      el.style.top = `${oldPos[node.id].y}px`;
-    }
-  });
+    let currentY = CONFIG.CANVAS_INITIAL_Y_OFFSET;
+    roots.forEach((root) => {
+      const bounds = layoutTree(root, 300, currentY);
+      currentY = bounds.maxY + 25.7;
+    });
 
-  void dom.canvas.offsetWidth;
+    const { minX, minY, maxX, maxY } = computeBounds();
+    const canvasPanned = maybeAutoPan(minX, minY, maxX, maxY);
 
-  state.nodes.forEach((node) => {
-    const el = getRenderedEl(node.id);
-    if (el) {
-      el.classList.add("smooth-arrange");
-      el.style.left = `${node.x}px`;
-      el.style.top = `${node.y}px`;
-    }
-  });
+    layoutNodes.forEach((node) => {
+      const el = getRenderedEl(node.id);
+      if (el) {
+        el.style.left = `${oldPos[node.id].x}px`;
+        el.style.top = `${oldPos[node.id].y}px`;
+      }
+    });
 
-  const start = performance.now();
-  function animateLoop(now) {
-    drawConnections();
-    if (now - start < CONFIG.ANIMATION_DURATION) {
-      requestAnimationFrame(animateLoop);
-    } else {
-      state.nodes.forEach((node) => {
-        const el = getRenderedEl(node.id);
-        if (el) el.classList.remove("smooth-arrange");
-      });
-      if (canvasPanned) dom.canvas.style.transition = "";
-    }
+    void dom.canvas.offsetWidth;
+
+    layoutNodes.forEach((node) => {
+      const el = getRenderedEl(node.id);
+      if (el) {
+        el.classList.add("smooth-arrange");
+        el.style.left = `${node.x}px`;
+        el.style.top = `${node.y}px`;
+      }
+    });
+
+    const start = performance.now();
+    const animateLoop = (now) => {
+      drawConnections();
+      if (now - start < CONFIG.ANIMATION_DURATION) {
+        requestAnimationFrame(animateLoop);
+      } else {
+        layoutNodes.forEach((node) => {
+          const el = getRenderedEl(node.id);
+          if (el) el.classList.remove("smooth-arrange");
+        });
+        if (canvasPanned) dom.canvas.style.transition = "";
+      }
+    };
+    requestAnimationFrame(animateLoop);
+  } finally {
+    state.nodes = allNodes;
+    savedParents.forEach((parent, id) => {
+      const node = allNodes.find((n) => String(n.id) === id);
+      if (node) node.parent = parent;
+    });
   }
-  requestAnimationFrame(animateLoop);
+
+  allNodes.forEach(saveNode);
+  history.push(allNodes, "چینش خودکار");
 }
 
 function computeBounds() {
@@ -191,6 +229,11 @@ function panCanvas(x, y, withTransition = true) {
 // ============================================================
 
 function applyState(nodesState) {
+  const keepIds = new Set(nodesState.map((n) => n.id));
+  state.nodes.forEach((n) => {
+    if (!keepIds.has(n.id)) deleteNodeDB(n.id);
+  });
+
   state.nodes = nodesState;
   state.nodes.forEach((node) => {
     if (!node.notes) node.notes = [];
@@ -198,6 +241,8 @@ function applyState(nodesState) {
   });
   renderNodes();
   drawConnections();
+
+  dom.emptyState.style.display = nodesState.length === 0 ? "block" : "none";
 }
 
 function undo() {
@@ -277,7 +322,12 @@ async function init() {
       drawConnections();
     }
 
-    history.push(state.nodes);
+    const historyRestored = history.load();
+    if (!historyRestored) {
+      history.push(state.nodes, "شروع");
+    }
+
+    window.__applyHistoryState = applyState;
     setupCanvasEvents();
     setupEvents(
       renderNodes,

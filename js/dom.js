@@ -20,6 +20,9 @@ export const dom = {
   fileImport: document.getElementById("file-import"),
   toastContainer: document.getElementById("toast-container"),
   moreMenu: document.getElementById("more-menu"),
+  historyPanel: document.getElementById("history-panel"),
+  diffModal: document.getElementById("diff-modal"),
+  filterActiveBtn: document.getElementById("tool-filter-active"),
 };
 
 export function hideAllMenus() {
@@ -27,6 +30,7 @@ export function hideAllMenus() {
   dom.elementMenu.classList.add("hidden");
   dom.notesMenu.classList.add("hidden");
   dom.moreMenu.classList.add("hidden");
+  if (dom.historyPanel) dom.historyPanel.classList.add("hidden");
 }
 
 export function hideAllModals() {
@@ -34,6 +38,7 @@ export function hideAllModals() {
   dom.noteModal.classList.add("hidden");
   dom.confirmModal.classList.add("hidden");
   dom.searchModal.classList.add("hidden");
+  if (dom.diffModal) dom.diffModal.classList.add("hidden");
 }
 
 export function positionFloating(el, x, y) {

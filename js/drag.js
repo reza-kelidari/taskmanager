@@ -7,6 +7,166 @@ import { history } from "./history.js";
 import { saveNode, setNodeDoneStatus } from "./db.js";
 import { errorReporter } from "./error.js";
 
+const SVG_NS = "http://www.w3.org/2000/svg";
+const LOCK_TOOLTIP_TEXT = "برخی از وظایف واسط مخفی هستند";
+
+// ============================================================
+// Helpers
+// ============================================================
+
+function isNodeHidden(node) {
+  return (
+    document.body.classList.contains("filter-active") &&
+    node.type === "task" &&
+    !!node.done
+  );
+}
+
+function syncHasParentClasses() {
+  state.nodes.forEach((node) => {
+    const el = getRenderedEl(node.id);
+    if (!el) return;
+    el.classList.toggle("has-parent", !!node.parent);
+    const parent = node.parent
+      ? state.nodes.find((n) => String(n.id) === String(node.parent))
+      : null;
+    el.classList.toggle("parent-hidden", !!parent && isNodeHidden(parent));
+  });
+}
+
+function nearestVisibleAncestor(node) {
+  let currentId = node.parent;
+  const guard = new Set();
+  while (currentId && !guard.has(String(currentId))) {
+    guard.add(String(currentId));
+    const p = state.nodes.find((n) => String(n.id) === String(currentId));
+    if (!p) return null;
+    if (!isNodeHidden(p)) return p;
+    currentId = p.parent;
+  }
+  return null;
+}
+
+// ============================================================
+// Lock Tooltip (برای اتصال‌های نمایشی)
+// ============================================================
+
+let lockTooltipEl = null;
+let lockTooltipActive = false;
+
+function ensureLockTooltip() {
+  if (!lockTooltipEl) {
+    lockTooltipEl = document.createElement("div");
+    lockTooltipEl.className = "lock-tooltip hidden";
+    document.body.appendChild(lockTooltipEl);
+  }
+  return lockTooltipEl;
+}
+
+function positionLockTooltip(x, y) {
+  if (!lockTooltipEl) return;
+  lockTooltipEl.style.left = `${x}px`;
+  lockTooltipEl.style.top = `${y - 34}px`;
+  const r = lockTooltipEl.getBoundingClientRect();
+  if (r.top < 8) lockTooltipEl.style.top = `${y + 20}px`;
+  if (r.right > window.innerWidth - 8)
+    lockTooltipEl.style.left = `${x - r.width}px`;
+  if (r.left < 8) lockTooltipEl.style.left = "8px";
+}
+
+function lockTooltipMouseMove(ev) {
+  const el = document.elementFromPoint(ev.clientX, ev.clientY);
+  if (el && el.closest(".lock-icon")) {
+    positionLockTooltip(ev.clientX, ev.clientY);
+  } else {
+    hideLockTooltip();
+  }
+}
+
+function showLockTooltip(ev) {
+  const t = ensureLockTooltip();
+  t.textContent = LOCK_TOOLTIP_TEXT;
+  t.classList.remove("hidden");
+  positionLockTooltip(ev.clientX, ev.clientY);
+  if (!lockTooltipActive) {
+    lockTooltipActive = true;
+    document.addEventListener("mousemove", lockTooltipMouseMove);
+  }
+}
+
+function hideLockTooltip() {
+  if (lockTooltipActive) {
+    lockTooltipActive = false;
+    document.removeEventListener("mousemove", lockTooltipMouseMove);
+  }
+  if (lockTooltipEl) lockTooltipEl.classList.add("hidden");
+}
+
+// ============================================================
+// Lock Icon (روی اتصال نمایشی، نزدیک نود فرزند)
+// ============================================================
+
+function appendLockIcon(x1, y1, midX, x2, y2) {
+  const cubicAt = (t) => {
+    const u = 1 - t;
+    return {
+      x:
+        u * u * u * x1 +
+        3 * u * u * t * midX +
+        3 * u * t * t * midX +
+        t * t * t * x2,
+      y:
+        u * u * u * y1 +
+        3 * u * u * t * y1 +
+        3 * u * t * t * y2 +
+        t * t * t * y2,
+    };
+  };
+
+  let p = null;
+  for (let t = 0.98; t >= 0.55; t -= 0.01) {
+    const q = cubicAt(t);
+    if (Math.abs(q.x - x2) >= 26 && q.x <= x1 - 18) {
+      p = q;
+      break;
+    }
+  }
+  if (!p) p = cubicAt(0.6);
+
+  const cx = p.x;
+  const cy = p.y;
+
+  const g = document.createElementNS(SVG_NS, "g");
+  g.setAttribute("class", "lock-icon");
+
+  const hit = document.createElementNS(SVG_NS, "rect");
+  hit.setAttribute("x", cx - 10);
+  hit.setAttribute("y", cy - 10);
+  hit.setAttribute("width", 20);
+  hit.setAttribute("height", 20);
+  hit.setAttribute("fill", "transparent");
+  g.appendChild(hit);
+
+  const body = document.createElementNS(SVG_NS, "rect");
+  body.setAttribute("class", "lock-body");
+  body.setAttribute("x", cx - 4);
+  body.setAttribute("y", cy - 2);
+  body.setAttribute("width", 8);
+  body.setAttribute("height", 6.5);
+  body.setAttribute("rx", 1.5);
+  g.appendChild(body);
+
+  const shackle = document.createElementNS(SVG_NS, "path");
+  shackle.setAttribute("class", "lock-shackle");
+  shackle.setAttribute("d", `M ${cx - 2} ${cy - 2} v -2 a 2 2 0 0 1 4 0 v 2`);
+  g.appendChild(shackle);
+
+  g.addEventListener("mouseenter", showLockTooltip);
+  g.addEventListener("mouseleave", hideLockTooltip);
+
+  dom.svgLayer.appendChild(g);
+}
+
 // ============================================================
 // Main Drag Handlers
 // ============================================================
@@ -40,6 +200,8 @@ export function handlePortMouseDown(e, node, portType) {
   } else {
     if (!node.parent) return;
     const sourceNode = state.nodes.find((n) => n.id == node.parent);
+    if (!sourceNode) return;
+    if (isNodeHidden(sourceNode)) return;
     state.dragData = { type: "move-connection", sourceNode, targetNode: node };
   }
 
@@ -84,10 +246,7 @@ function handleNodeDrag(e) {
 function handleConnectionDrag(e) {
   if (!state.dragData.tempLine) {
     if (state.dragData.type === "move-connection") drawConnections();
-    state.dragData.tempLine = document.createElementNS(
-      "http://www.w3.org/2000/svg",
-      "path",
-    );
+    state.dragData.tempLine = document.createElementNS(SVG_NS, "path");
     state.dragData.tempLine.setAttribute("stroke-width", "2");
     state.dragData.tempLine.setAttribute("stroke-dasharray", "5,5");
     state.dragData.tempLine.setAttribute("fill", "none");
@@ -104,7 +263,7 @@ function handleConnectionDrag(e) {
   if (targetEl) {
     const targetId = targetEl.dataset.id;
     const targetNode = state.nodes.find((n) => n.id == targetId);
-    if (targetNode) {
+    if (targetNode && !isNodeHidden(targetNode)) {
       if (state.dragData.type === "new-connection") {
         isConnectable = canConnect(state.dragData.sourceNode, targetNode);
       } else if (state.dragData.type === "move-connection") {
@@ -164,21 +323,35 @@ function handleDragEnd(e) {
   }
 }
 
-// ✅ ساده شد: دیگه چک نمی‌کنه روی کدوم نود رها شده
-// فقط نود رو سر جاش می‌ذاره و resolveOverlaps اجرا می‌شه
 function handleNodeDragEnd() {
   if (!state.dragData.moved) return;
 
-  const id = state.dragData.el.dataset.id;
-  const newX = parseInt(state.dragData.el.style.left);
-  const newY = parseInt(state.dragData.el.style.top);
+  const el = state.dragData.el;
+  const id = el?.dataset?.id;
+  if (!id) return;
+
+  const newX = parseInt(el.style.left);
+  const newY = parseInt(el.style.top);
+  if (isNaN(newX) || isNaN(newY)) return;
 
   const node = state.nodes.find((n) => n.id == id);
-  if (node) {
-    node.x = newX;
-    node.y = newY;
-    saveNode(node);
+  if (!node) return;
+
+  const oldX = node.x;
+  const oldY = node.y;
+
+  node.x = newX;
+  node.y = newY;
+  saveNode(node);
+
+  try {
     resolveOverlaps(node);
+  } catch (err) {
+    errorReporter.report(err, { context: "resolveOverlaps (drag)" });
+  }
+
+  if (node.x !== oldX || node.y !== oldY) {
+    history.push(state.nodes, `جابجایی «${node.title}»`);
   }
 }
 
@@ -198,7 +371,7 @@ function handleConnectionDragEnd(e) {
     const targetId = targetEl.dataset.id;
     const targetNode = state.nodes.find((n) => n.id == targetId);
 
-    if (targetNode) {
+    if (targetNode && !isNodeHidden(targetNode)) {
       if (canConnect(state.dragData.sourceNode, targetNode)) {
         if (state.dragData.type === "move-connection") {
           state.dragData.targetNode.parent = null;
@@ -209,13 +382,13 @@ function handleConnectionDragEnd(e) {
         if (state.dragData.sourceNode.type === "task") {
           setNodeDoneStatus(state.dragData.sourceNode, true);
         }
-        history.push(state.nodes);
+        history.push(state.nodes, "اتصال گره");
       }
     }
   } else if (state.dragData.type === "move-connection") {
     state.dragData.targetNode.parent = null;
     saveNode(state.dragData.targetNode);
-    history.push(state.nodes);
+    history.push(state.nodes, "قطع اتصال");
   }
 
   renderNodes();
@@ -250,6 +423,7 @@ function resolveOverlaps(movedNode) {
 
     for (const other of state.nodes) {
       if (other.id === movedNode.id) continue;
+      if (isNodeHidden(other)) continue;
       const otherEl = getRenderedEl(other.id);
       if (!otherEl) continue;
 
@@ -308,9 +482,10 @@ function resolveOverlaps(movedNode) {
 function checkCurveOverlap(mX1, mX2, mY1, mY2, movedId) {
   for (const node of state.nodes) {
     if (!node.parent || node.id === movedId) continue;
+    if (isNodeHidden(node)) continue;
 
     const parent = state.nodes.find((n) => n.id == node.parent);
-    if (!parent) continue;
+    if (!parent || isNodeHidden(parent)) continue;
 
     const parentEl = getRenderedEl(parent.id);
     const childEl = getRenderedEl(node.id);
@@ -368,6 +543,8 @@ export function requestDraw() {
 }
 
 export function drawConnections() {
+  syncHasParentClasses();
+
   dom.svgLayer.innerHTML = "";
   const canvasRect = dom.canvas.getBoundingClientRect();
 
@@ -378,9 +555,12 @@ export function drawConnections() {
       state.dragData.targetNode.id === node.id
     )
       return;
+    if (isNodeHidden(node)) return;
 
-    const parent = state.nodes.find((n) => n.id == node.parent);
+    const parent = nearestVisibleAncestor(node);
     if (!parent) return;
+
+    const isProjection = String(node.parent) !== String(parent.id);
 
     const parentEl = getRenderedEl(parent.id);
     const childEl = getRenderedEl(node.id);
@@ -398,16 +578,22 @@ export function drawConnections() {
     const y2 = cRect.top - canvasRect.top + 4;
     const midX = (x1 + x2) / 2;
 
-    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute("class", "connection-line");
+    const path = document.createElementNS(SVG_NS, "path");
+    path.setAttribute(
+      "class",
+      isProjection ? "connection-line projected" : "connection-line",
+    );
     path.setAttribute(
       "d",
       `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`,
     );
     path.setAttribute("fill", "none");
     path.setAttribute("stroke", "#ccc");
-    path.setAttribute("stroke-dasharray", "5,5");
     path.setAttribute("stroke-width", "2");
     dom.svgLayer.appendChild(path);
+
+    if (isProjection) {
+      appendLockIcon(x1, y1, midX, x2, y2);
+    }
   });
 }

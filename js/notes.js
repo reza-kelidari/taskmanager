@@ -1,6 +1,13 @@
 import { state } from "./state.js";
 import { dom, positionFloating } from "./dom.js";
-import { getShamsiDate, getCurrentTime, showToast } from "./utils.js";
+import {
+  getShamsiDate,
+  getCurrentTime,
+  showToast,
+  saveDraft,
+  loadDraft,
+  clearDraft,
+} from "./utils.js";
 import { saveNode } from "./db.js";
 import { history } from "./history.js";
 import { renderNodes } from "./renderer.js";
@@ -50,7 +57,7 @@ export function renderNotesList(node) {
       state.pendingDeleteAction = () => {
         node.notes.splice(index, 1);
         saveNode(node);
-        history.push(state.nodes);
+        history.push(state.nodes, "حذف یادداشت");
         dom.confirmModal.classList.add("hidden");
         showNotesMenu(x, y, node);
         renderNodes();
@@ -67,12 +74,22 @@ export function renderNotesList(node) {
 
 export function openNoteModal(isEditing, index, text) {
   state.editingNoteIndex = index;
-  dom.noteTextInput.value = text;
+  const draftKey =
+    state.currentNoteNodeId != null
+      ? `note_${state.currentNoteNodeId}_${index}`
+      : "note_temp";
+  const draft = loadDraft(draftKey);
+  dom.noteTextInput.value = draft?.text ?? text;
   const x = parseInt(dom.notesMenu.style.left);
   const y = parseInt(dom.notesMenu.style.top);
   dom.notesMenu.classList.add("hidden");
   positionFloating(dom.noteModal, x, y);
   dom.noteTextInput.focus();
+
+  dom.noteTextInput.oninput = () => {
+    saveDraft(draftKey, { text: dom.noteTextInput.value });
+  };
+  dom.noteModal.dataset.draftKey = draftKey;
 }
 
 export function saveNote() {
@@ -83,12 +100,20 @@ export function saveNote() {
   }
   const node = state.nodes.find((n) => n.id == state.currentNoteNodeId);
   if (!node.notes) node.notes = [];
-  if (state.editingNoteIndex >= 0)
+  if (state.editingNoteIndex >= 0) {
+    // Update text and refresh date/time on edit
     node.notes[state.editingNoteIndex].text = text;
-  else node.notes.push({ text, date: getShamsiDate(), time: getCurrentTime() });
+    node.notes[state.editingNoteIndex].date = getShamsiDate();
+    node.notes[state.editingNoteIndex].time = getCurrentTime();
+  } else {
+    node.notes.push({ text, date: getShamsiDate(), time: getCurrentTime() });
+  }
   saveNode(node);
-  history.push(state.nodes);
+  history.push(state.nodes, "ویرایش/افزودن یادداشت");
+  const draftKey = dom.noteModal.dataset.draftKey;
+  if (draftKey) clearDraft(draftKey);
   dom.noteTextInput.value = "";
+  dom.noteTextInput.oninput = null;
   dom.noteModal.classList.add("hidden");
   const x = parseInt(dom.noteModal.style.left);
   const y = parseInt(dom.noteModal.style.top);

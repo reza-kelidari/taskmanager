@@ -123,3 +123,25 @@ export function shouldShowHoverBox() {
     !dom.confirmModal.classList.contains("hidden")
   );
 }
+
+/** Draft persistence for text fields (survives refresh / accidental close) */
+export function saveDraft(key, data) {
+  try {
+    localStorage.setItem(`draft_${key}`, JSON.stringify(data));
+  } catch (_) {}
+}
+
+export function loadDraft(key) {
+  try {
+    const raw = localStorage.getItem(`draft_${key}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+export function clearDraft(key) {
+  try {
+    localStorage.removeItem(`draft_${key}`);
+  } catch (_) {}
+}

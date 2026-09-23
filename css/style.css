@@ -68,49 +68,154 @@ body {
     color 0.3s ease;
 }
 
-/* ==================== Tools ==================== */
+/* ==================== Tools (vertical, right side) ==================== */
 .tools {
   position: fixed;
   top: 20px;
-  left: 20px;
+  right: 20px;
+  left: auto;
   z-index: 1000;
   display: flex;
-  gap: 5px;
-  padding: 5px;
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-full);
-  box-shadow: var(--shadow-sm);
-  align-items: center;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  align-items: stretch;
+  width: max-content;
+  max-width: 280px;
+  transition: none;
 }
 
 body.dark-mode .tools {
-  background: rgba(40, 40, 40, 0.7);
+  background: rgba(40, 40, 40, 0.85);
 }
 
 .tool-btn {
   background: none;
   border: 1px solid transparent;
-  padding: 5px;
+  padding-block: 6px;
+  padding-inline-start: 6px;
+  /* ✅ حالت جمع‌شده: بدون فضای انتهایی اضافه */
+  padding-inline-end: 6px;
   cursor: pointer;
-  border-radius: 50%;
+  border-radius: var(--radius-sm);
   color: var(--text-secondary);
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 0;
   height: 30px;
-  width: 30px;
-  transition: all var(--transition);
+  min-height: 30px;
+  max-height: 30px;
+  width: auto;
+  box-sizing: border-box;
+  transition:
+    background var(--transition),
+    gap 0.2s ease,
+    padding 0.2s ease;
+  position: relative;
+  font-family: inherit;
+  font-size: 13px;
+  overflow: hidden;
+}
+
+/* ✅ فاصله آیکون تا لیبل + رزرو زون انتهایی (فلش + میانبر)
+   فقط وقتی نوار باز است — در همه‌ی ردیف‌ها یکسان رزرو می‌شود */
+.tools:hover .tool-btn,
+.tools.is-expanded .tool-btn {
+  gap: 8px;
+  padding-inline-end: 92px;
+}
+
+.tool-btn > svg:not(.tool-chevron),
+.tool-btn > .filter-dot,
+.tool-btn > .tool-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  display: block;
+}
+
+.tool-btn > .filter-dot {
+  width: 12px;
+  height: 12px;
+  margin: 3px; /* center in 18px slot */
 }
 
 body.dark-mode .tool-btn {
   color: var(--text-muted);
 }
 
+.tool-btn .tool-label {
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  transition:
+    max-width 0.2s ease,
+    opacity 0.15s ease;
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.tools:hover .tool-btn .tool-label,
+.tools.is-expanded .tool-btn .tool-label {
+  max-width: 155px;
+  opacity: 1;
+}
+
+.tool-shortcut {
+  position: absolute;
+  left: 22px;
+  top: 50%;
+  transform: translateY(-50%);
+  direction: ltr;
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.tools:hover .tool-shortcut,
+.tools.is-expanded .tool-shortcut {
+  opacity: 0.85;
+}
+
+/* ✅ فلش — absolute در زون رزرو انتهای ردیف */
+.tool-chevron {
+  position: absolute;
+  inset-inline-end: 4px;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  transform: translateY(-50%);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.15s ease,
+    transform 0.2s ease;
+}
+
+.tools:hover .tool-btn.has-submenu .tool-chevron,
+.tools.is-expanded .tool-btn.has-submenu .tool-chevron {
+  opacity: 0.75;
+}
+
+.tool-btn.has-submenu:hover:not(:disabled) .tool-chevron,
+.tool-btn.has-submenu.submenu-open .tool-chevron {
+  opacity: 1;
+  transform: translateY(-50%) translateX(-2px);
+}
+
 .tool-btn:hover:not(:disabled) {
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(0, 0, 0, 0.06);
 }
 
 body.dark-mode .tool-btn:hover:not(:disabled) {
@@ -118,20 +223,272 @@ body.dark-mode .tool-btn:hover:not(:disabled) {
 }
 
 .tool-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
 }
 
 .tool-btn:focus {
+  outline: none;
+}
+
+.tool-btn:focus-visible:not(:disabled) {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
+/* حالت فعال فیلتر — تینت خنثی (هماهنگ با دایره خاکستری) */
+.tool-btn.active-filter {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+body.dark-mode .tool-btn.active-filter {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* دایره: سبز = انجام‌شده‌ها در حال نمایش / خاکستری = مخفی */
+.filter-dot {
+  border-radius: 50%;
+  background: var(--success);
+  display: block;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.3);
+}
+
+.tool-btn[aria-pressed="true"] .filter-dot {
+  background: #9a9a9a;
+  box-shadow: 0 0 0 2px rgba(154, 154, 154, 0.3);
+}
+
+/*
+  همه آیتم‌های ثانویه داخل یک wrapper —
+  وقتی بسته است ارتفاع صفر می‌شود و دیگر gap اضافه نمی‌گیرد.
+*/
+.tools-secondary {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  margin-top: -4px;
+  pointer-events: none;
+  visibility: hidden;
+  transition:
+    max-height 0.22s ease,
+    opacity 0.18s ease,
+    margin-top 0.22s ease;
+}
+
+.tools:hover .tools-secondary,
+.tools.is-expanded .tools-secondary {
+  max-height: 280px;
+  opacity: 1;
+  margin-top: 0;
+  gap: 4px;
+  pointer-events: auto;
+  visibility: visible;
+  overflow: visible;
+}
+
 .separator {
-  width: 1px;
-  height: 24px;
+  width: 100%;
+  height: 1px;
   background-color: var(--border-color);
-  margin: 0 5px;
+  margin: 0;
+  flex-shrink: 0;
+  border: none;
+  padding: 0;
+}
+
+.tool-group {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.tool-secondary {
+  /* کلاس فقط برای نشانه‌گذاری؛ layout با .tools-secondary کنترل می‌شود */
+}
+
+/* History panel (undo/redo list) */
+.history-panel {
+  position: absolute;
+  left: auto;
+  right: 100%;
+  top: 0;
+  margin-right: 10px;
+  min-width: 280px;
+  max-width: 320px;
+  max-height: 360px;
+  overflow-y: auto;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 8px;
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.history-panel.hidden {
+  display: none !important;
+}
+
+/* wrapper هر آیتم — دکمه «...» داخل wrapper ولی بیرون از خود ردیف */
+.history-entry {
+  position: relative;
+  padding-left: 36px;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  text-align: right;
+  transition:
+    background 0.12s ease,
+    opacity 0.12s ease;
+  opacity: 1;
+}
+
+.history-item:hover,
+.history-item:focus {
+  outline: none;
+  background: var(--bg-tertiary);
+}
+
+.history-item.history-preview {
+  opacity: 0.4;
+  background: var(--bg-tertiary);
+}
+
+.history-item-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-item-time {
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* دکمه «...» — بیرون از ردیف، در gutter سمت چپ */
+.history-item-diff {
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 4px 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background var(--transition),
+    color var(--transition),
+    box-shadow var(--transition);
+}
+
+.history-item-diff:hover {
+  background: #ffffff;
+  color: #000000;
+  box-shadow: var(--shadow-sm);
+}
+
+.history-empty {
+  padding: 12px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* Diff modal */
+#diff-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-xl);
+  z-index: 2000;
+  border-radius: var(--radius-lg);
+  width: min(720px, 92vw);
+  max-height: 80vh;
+  overflow: hidden;
+  padding: 0;
+}
+
+.diff-content {
+  display: flex;
+  flex-direction: column;
+  max-height: 80vh;
+}
+
+.diff-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+  font-weight: 600;
+}
+
+.diff-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  overflow: auto;
+  max-height: calc(80vh - 50px);
+}
+
+.diff-col {
+  padding: 12px;
+  overflow: auto;
+}
+
+.diff-col:first-child {
+  border-left: 1px solid var(--border-color);
+}
+
+.diff-col h5 {
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.diff-col pre {
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  color: var(--text-primary);
+  line-height: 1.5;
+  max-height: 50vh;
+  overflow: auto;
+}
+
+/* نودهای انجام‌شده با فیلتر فعال، کاملاً از صفحه حذف می‌شوند */
+body.filter-active .node.task.done {
+  display: none;
 }
 
 #date-display {
@@ -205,6 +562,63 @@ body.dark-mode .tool-btn:hover:not(:disabled) {
   stroke-dasharray: 5, 5;
   stroke-width: 2;
   fill: none;
+}
+
+/* ✅ اتصال نمایشی (والد واسط مخفی) — خط ممتد */
+.connection-line.projected {
+  stroke-dasharray: none;
+}
+
+/* ✅ آیکون قفل روی اتصال نمایشی */
+.lock-icon {
+  pointer-events: all;
+  cursor: help;
+}
+
+.lock-icon .lock-body {
+  fill: #9a9a9a;
+  transition: fill 0.15s ease;
+}
+
+.lock-icon .lock-shackle {
+  fill: none;
+  stroke: #9a9a9a;
+  stroke-width: 1.5;
+  transition: stroke 0.15s ease;
+}
+
+.lock-icon:hover .lock-body {
+  fill: #666666;
+}
+
+.lock-icon:hover .lock-shackle {
+  stroke: #666666;
+}
+
+body.dark-mode .lock-icon:hover .lock-body {
+  fill: #cfcfcf;
+}
+
+body.dark-mode .lock-icon:hover .lock-shackle {
+  stroke: #cfcfcf;
+}
+
+/* ✅ تولتیپ قفل */
+.lock-tooltip {
+  position: fixed;
+  z-index: 1200;
+  background: #333333;
+  color: #ffffff;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: var(--shadow-md);
+}
+
+body.dark-mode .lock-tooltip {
+  background: #555555;
 }
 
 #empty-state {
@@ -283,6 +697,16 @@ body.dark-mode .node.task.done .task-label {
   background: transparent;
 }
 
+/* نقطه اتصال به والد فقط وقتی نود واقعاً والد دارد */
+.node:not(.has-parent) .cp-right {
+  display: none;
+}
+
+/* ✅ والد مستقیم مخفی است — نقطه خاکستری: اتصال قابل جداسازی نیست */
+.node.parent-hidden .cp-right {
+  background-color: #9a9a9a;
+}
+
 .node:hover .cp-left,
 .cp-left:hover {
   opacity: 1;
@@ -305,7 +729,7 @@ body.dark-mode .node.task.done .task-label {
   transform: translateY(-50%);
 }
 
-/* ✅ نقطه آبی سرفصل سمت چپ (انتها) */
+/* نقطه آبی سرفصل سمت چپ (انتها) */
 .node.header .cp-left {
   left: -5px;
   right: auto;
@@ -337,6 +761,10 @@ body.dark-mode .node.task.done .task-label {
   overflow-y: auto;
 }
 
+#more-menu {
+  z-index: 1100;
+  min-width: 200px;
+}
 #notes-menu {
   min-width: 250px;
 }
@@ -372,6 +800,21 @@ body.dark-mode .node.task.done .task-label {
   color: #ccc;
   cursor: not-allowed;
   pointer-events: none;
+}
+
+#more-menu .menu-item {
+  position: relative;
+  padding-inline-end: 72px;
+}
+
+.menu-shortcut {
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  direction: ltr;
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 body #more-menu .icon-sun {

@@ -9,14 +9,13 @@
     />
     <title>مدیریت وظایف روزانه</title>
     <link rel="stylesheet" href="css/style.css" />
-
   </head>
   <body dir="rtl" lang="fa">
     <div class="tools" role="toolbar" aria-label="ابزارها">
       <button
         id="tool-arrange"
         class="tool-btn"
-        title="چینش خودکار"
+        title="چینش خودکار (Ctrl+A)"
         aria-label="چینش خودکار"
       >
         <svg
@@ -39,6 +38,8 @@
           <path d="m3 21 9-9" />
           <path d="M12.2 6.2 11 5" />
         </svg>
+        <span class="tool-label">چینش</span>
+        <span class="tool-shortcut">Ctrl+A</span>
       </button>
       <button
         id="tool-search"
@@ -59,72 +60,169 @@
           <circle cx="11" cy="11" r="8"></circle>
           <path d="m21 21-4.3-4.3"></path>
         </svg>
+        <span class="tool-label">جستجو</span>
+        <span class="tool-shortcut">Ctrl+F</span>
       </button>
-      <div class="separator"></div>
-      <button
-        id="tool-redo"
-        class="tool-btn"
-        title="از نو (Ctrl+Y)"
-        aria-label="از نو"
-        disabled
-      >
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
+      <div class="tools-secondary">
+        <div class="separator tool-secondary-sep"></div>
+        <div class="tool-group tool-secondary" id="undo-group">
+          <button
+            id="tool-undo"
+            class="tool-btn has-submenu"
+            title="بازگشت (Ctrl+Z)"
+            aria-label="بازگشت"
+            disabled
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M3 7v6h6"></path>
+              <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path>
+            </svg>
+            <span class="tool-label">بازگشت</span>
+            <span class="tool-shortcut">Ctrl+Z</span>
+            <svg
+              class="tool-chevron"
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+          </button>
+          <button
+            id="tool-redo"
+            class="tool-btn has-submenu"
+            title="از نو (Ctrl+Shift+Z)"
+            aria-label="از نو"
+            disabled
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M21 7v6h-6"></path>
+              <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"></path>
+            </svg>
+            <span class="tool-label">از نو</span>
+            <span class="tool-shortcut">Ctrl+Shift+Z</span>
+            <svg
+              class="tool-chevron"
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+          </button>
+          <div
+            id="history-panel"
+            class="history-panel hidden"
+            role="listbox"
+            aria-label="تاریخچه تغییرات"
+          ></div>
+        </div>
+        <div class="separator tool-secondary-sep"></div>
+        <button
+          id="tool-filter-active"
+          class="tool-btn tool-secondary"
+          title="نمایش انجام‌شده‌ها (Ctrl+D)"
+          aria-label="نمایش انجام‌شده‌ها"
+          aria-pressed="false"
         >
-          <path d="M21 7v6h-6"></path>
-          <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"></path>
-        </svg>
-      </button>
-      <button
-        id="tool-undo"
-        class="tool-btn"
-        title="بازگشت (Ctrl+Z)"
-        aria-label="بازگشت"
-        disabled
-      >
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
+          <span class="filter-dot"></span>
+          <span class="tool-label">نمایش انجام‌شده‌ها</span>
+          <span class="tool-shortcut">Ctrl+D</span>
+        </button>
+        <div class="separator tool-secondary-sep"></div>
+        <button
+          id="tool-more"
+          class="tool-btn tool-secondary has-submenu"
+          title="امکانات بیشتر"
+          aria-label="منوی امکانات"
         >
-          <path d="M3 7v6h6"></path>
-          <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path>
-        </svg>
-      </button>
-      <div class="separator"></div>
-      <button
-        id="tool-more"
-        class="tool-btn"
-        title="امکانات بیشتر"
-        aria-label="منوی امکانات"
-      >
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <circle cx="12" cy="12" r="1"></circle>
-          <circle cx="12" cy="5" r="1"></circle>
-          <circle cx="12" cy="19" r="1"></circle>
-        </svg>
-      </button>
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="1"></circle>
+            <circle cx="12" cy="5" r="1"></circle>
+            <circle cx="12" cy="19" r="1"></circle>
+          </svg>
+          <span class="tool-label">بیشتر</span>
+          <svg
+            class="tool-chevron"
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div
+      id="diff-modal"
+      class="hidden"
+      role="dialog"
+      aria-label="مقایسه قبل و بعد"
+    >
+      <div class="modal-content diff-content">
+        <div class="diff-header">
+          <span id="diff-label">مقایسه</span>
+          <button id="diff-close" class="tool-btn" aria-label="بستن">
+            &times;
+          </button>
+        </div>
+        <div class="diff-body">
+          <div class="diff-col">
+            <h5>قبل</h5>
+            <pre id="diff-before"></pre>
+          </div>
+          <div class="diff-col">
+            <h5>بعد</h5>
+            <pre id="diff-after"></pre>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div
@@ -190,7 +288,8 @@
           <polyline points="7 10 12 15 17 10"></polyline>
           <line x1="12" y1="15" x2="12" y2="3"></line>
         </svg>
-        <span>خروجی (Ctrl+E)</span>
+        <span>خروجی</span>
+        <span class="menu-shortcut">Ctrl+E</span>
       </div>
       <div class="menu-item" data-action="import" role="menuitem" tabindex="0">
         <svg
@@ -207,7 +306,8 @@
           <polyline points="17 8 12 3 7 8"></polyline>
           <line x1="12" y1="3" x2="12" y2="15"></line>
         </svg>
-        <span>ورود (Ctrl+I)</span>
+        <span>ورود</span>
+        <span class="menu-shortcut">Ctrl+I</span>
       </div>
     </div>
 
