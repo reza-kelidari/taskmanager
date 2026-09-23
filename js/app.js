@@ -300,12 +300,16 @@ function exportData() {
 // Init
 // ============================================================
 
-async function init() {
+(async () => {
   try {
     dom.dateDisplay.innerText = getShamsiDate();
 
     if (localStorage.getItem("darkMode") === "true") {
       document.body.classList.add("dark-mode");
+    }
+
+    if (localStorage.getItem("filterActive") === "true") {
+      document.body.classList.add("filter-active");
     }
 
     await initDB();
@@ -341,6 +345,4 @@ async function init() {
     errorReporter.report(error, { context: "init" });
     showToast("خطا در راه‌اندازی", "error");
   }
-}
-
-init();
+})();

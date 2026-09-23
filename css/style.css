@@ -32,6 +32,10 @@
   --radius-lg: 20px;
   --radius-full: 999px;
   --transition: 0.2s ease;
+  /* ✅ سیستم مشترک نوار ابزار و منوهای تکمیلی */
+  --menu-radius: 16px;
+  --menu-padding: 6px;
+  --menu-gap: 4px;
 }
 
 body.dark-mode {
@@ -77,13 +81,13 @@ body {
   z-index: 1000;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 6px;
+  gap: var(--menu-gap); /* ✅ */
+  padding: var(--menu-padding); /* ✅ */
   background: rgba(255, 255, 255, 0.75);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
+  border-radius: var(--menu-radius); /* ✅ ۱۶px */
   box-shadow: var(--shadow-md);
   align-items: stretch;
   width: max-content;
@@ -100,7 +104,7 @@ body.dark-mode .tools {
   border: 1px solid transparent;
   padding-block: 6px;
   padding-inline-start: 6px;
-  /* ✅ حالت جمع‌شده: بدون فضای انتهایی اضافه */
+  /* حالت جمع‌شده: بدون فضای انتهایی اضافه */
   padding-inline-end: 6px;
   cursor: pointer;
   border-radius: var(--radius-sm);
@@ -123,7 +127,7 @@ body.dark-mode .tools {
   overflow: hidden;
 }
 
-/* ✅ فاصله آیکون تا لیبل + رزرو زون انتهایی (فلش + میانبر)
+/* فاصله آیکون تا لیبل + رزرو زون انتهایی (فلش + میانبر)
    فقط وقتی نوار باز است — در همه‌ی ردیف‌ها یکسان رزرو می‌شود */
 .tools:hover .tool-btn,
 .tools.is-expanded .tool-btn {
@@ -188,7 +192,7 @@ body.dark-mode .tool-btn {
   opacity: 0.85;
 }
 
-/* ✅ فلش — absolute در زون رزرو انتهای ردیف */
+/* فلش — absolute در زون رزرو انتهای ردیف */
 .tool-chevron {
   position: absolute;
   inset-inline-end: 4px;
@@ -273,7 +277,8 @@ body.dark-mode .tool-btn.active-filter {
   overflow: hidden;
   margin: 0;
   padding: 0;
-  margin-top: -4px;
+  /* ✅ خنثی کردن gap والد — همیشه با menu-gap سینک است */
+  margin-top: calc(var(--menu-gap) * -1);
   pointer-events: none;
   visibility: hidden;
   transition:
@@ -287,7 +292,7 @@ body.dark-mode .tool-btn.active-filter {
   max-height: 280px;
   opacity: 1;
   margin-top: 0;
-  gap: 4px;
+  gap: var(--menu-gap); /* ✅ */
   pointer-events: auto;
   visibility: visible;
   overflow: visible;
@@ -307,7 +312,7 @@ body.dark-mode .tool-btn.active-filter {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--menu-gap); /* ✅ */
   flex-shrink: 0;
 }
 
@@ -328,13 +333,13 @@ body.dark-mode .tool-btn.active-filter {
   overflow-y: auto;
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  border-radius: var(--menu-radius); /* ✅ */
   box-shadow: var(--shadow-lg);
-  padding: 8px;
+  padding: var(--menu-padding); /* ✅ */
   z-index: 1100;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--menu-gap); /* ✅ */
 }
 
 .history-panel.hidden {
@@ -452,6 +457,39 @@ body.dark-mode .tool-btn.active-filter {
   font-weight: 600;
 }
 
+#diff-close {
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  max-height: 28px;
+  padding: 0;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: inherit;
+  transition: background var(--transition);
+}
+
+#diff-close:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+body.dark-mode #diff-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+#diff-close svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
 .diff-body {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -564,12 +602,12 @@ body.filter-active .node.task.done {
   fill: none;
 }
 
-/* ✅ اتصال نمایشی (والد واسط مخفی) — خط ممتد */
+/* اتصال نمایشی (والد واسط مخفی) — خط ممتد */
 .connection-line.projected {
   stroke-dasharray: none;
 }
 
-/* ✅ آیکون قفل روی اتصال نمایشی */
+/* آیکون قفل روی اتصال نمایشی */
 .lock-icon {
   pointer-events: all;
   cursor: help;
@@ -603,7 +641,7 @@ body.dark-mode .lock-icon:hover .lock-shackle {
   stroke: #cfcfcf;
 }
 
-/* ✅ تولتیپ قفل */
+/* تولتیپ قفل */
 .lock-tooltip {
   position: fixed;
   z-index: 1200;
@@ -702,7 +740,7 @@ body.dark-mode .node.task.done .task-label {
   display: none;
 }
 
-/* ✅ والد مستقیم مخفی است — نقطه خاکستری: اتصال قابل جداسازی نیست */
+/* والد مستقیم مخفی است — نقطه خاکستری: اتصال قابل جداسازی نیست */
 .node.parent-hidden .cp-right {
   background-color: #9a9a9a;
 }
@@ -752,11 +790,11 @@ body.dark-mode .node.task.done .task-label {
   box-shadow: var(--shadow-md);
   z-index: 4;
   min-width: 150px;
-  padding: 10px;
-  border-radius: var(--radius-lg);
+  padding: var(--menu-padding); /* ✅ */
+  border-radius: var(--menu-radius); /* ✅ */
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: var(--menu-gap); /* ✅ */
   max-height: 300px;
   overflow-y: auto;
 }
