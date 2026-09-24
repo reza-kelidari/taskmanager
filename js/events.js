@@ -20,6 +20,7 @@ import { setupContextMenus } from "./context-menus.js";
 import { setupKeyboardShortcuts } from "./keyboard.js";
 import { setupDiffModal } from "./diff.js";
 import { setupDetailsModal } from "./details.js";
+import { setupMoveMenu } from "./move.js";
 import {
   setupPages,
   renderPageTabs,
@@ -59,6 +60,7 @@ export function setupEvents(actions) {
   setupKeyboardShortcuts(actions);
   setupDiffModal();
   setupDetailsModal();
+  setupMoveMenu();
   setupPages();
 
   /* Notes menu / confirm dialog wiring */

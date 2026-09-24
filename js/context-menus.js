@@ -2,12 +2,14 @@
  * @module context-menus
  * @description Right-click menus: the canvas context menu (create
  * header/task), the element menu (edit / delete / done / cancelled /
- * suspended / notes) and the global dismiss-on-outside-press behavior.
+ * suspended / notes / move-to) and the global dismiss-on-outside-press
+ * behavior.
  *
- * Menus owned by other modules — #page-menu (tab bar) and
- * #details-comment-menu (details modal) — are deliberately excluded
- * from both the global contextmenu handler and the generic menu-item
- * click wiring, so their own handlers keep full control.
+ * Menus owned by other modules — #page-menu (tab bar),
+ * #details-comment-menu (details modal) and #move-menu (move module) —
+ * are deliberately excluded from both the global contextmenu handler
+ * and the generic menu-item click wiring, so their own handlers keep
+ * full control.
  */
 import { state } from "./state.js";
 import { dom, hideAllMenus, hideAllModals, positionFloating } from "./dom.js";
@@ -23,6 +25,7 @@ import { history } from "./history.js";
 import { drawConnections } from "./connections.js";
 import { showNotesMenu } from "./notes.js";
 import { showInputModal } from "./modals.js";
+import { showMoveMenu } from "./move.js";
 
 /**
  * @typedef {object} AppActions
@@ -79,6 +82,9 @@ export function setupContextMenus(actions) {
       const notesItem = dom.elementMenu.querySelector(
         '[data-action="comments"]',
       );
+      const moveItem = dom.elementMenu.querySelector(
+        '[data-action="move-to"]',
+      );
       const editItem = dom.elementMenu.querySelector('[data-action="edit"]');
       if (nodeData.type === "task") {
         toggleItem.style.display =
@@ -92,12 +98,14 @@ export function setupContextMenus(actions) {
         suspendItem.innerText = nodeData.suspended ? "تعلیق‌نشده" : "تعلیق‌شده";
         notesItem.style.display = "none";
         editItem.style.display = "none";
+        moveItem.style.display = state.pages.length > 1 ? "flex" : "none";
       } else {
         toggleItem.style.display = "none";
         cancelItem.style.display = "none";
         suspendItem.style.display = "none";
         notesItem.style.display = "none";
         editItem.style.display = "flex";
+        moveItem.style.display = state.pages.length > 1 ? "flex" : "none";
       }
       positionFloating(dom.elementMenu, e.clientX, e.clientY);
     } else if (e.target.closest("#canvas-wrapper")) {
@@ -235,6 +243,10 @@ export function setupContextMenus(actions) {
           if (action === "comments") {
             state.currentNoteNodeId = nodeId;
             showNotesMenu(x, y, node);
+            dom.elementMenu.classList.add("hidden");
+          }
+          if (action === "move-to") {
+            showMoveMenu(x, y, node);
             dom.elementMenu.classList.add("hidden");
           }
         }

@@ -697,6 +697,8 @@ body.dark-mode #details-desc:not(.editing):hover {
   white-space: pre-wrap;
   overflow-y: auto;
   resize: none;
+  text-align: justify;
+  text-align-last: right;
 }
 
 .details-edit-actions {
@@ -828,6 +830,7 @@ body.dark-mode .cancel-text-btn {
   white-space: pre-wrap;
   word-break: break-word;
   text-align: justify;
+  text-align-last: right;
 }
 
 .details-info p.empty {
@@ -1265,6 +1268,8 @@ body.dark-mode #page-card-title:hover {
   color: var(--text-secondary);
   white-space: pre-wrap;
   word-break: break-word;
+  text-align: justify;
+  text-align-last: right;
   cursor: pointer;
   border-radius: 8px;
   padding: 4px 8px;
@@ -1331,6 +1336,8 @@ body.dark-mode #page-desc:hover {
   white-space: pre-wrap;
   overflow-y: auto;
   resize: none;
+  text-align: justify;
+  text-align-last: right;
 }
 
 .page-desc-input:focus {
@@ -1896,6 +1903,11 @@ body.dark-mode #more-menu .icon-moon {
   transition: border-color var(--transition);
 }
 
+#input-note {
+  text-align: justify;
+  text-align-last: right;
+}
+
 #input-title:focus,
 #input-note:focus,
 #note-text-input:focus,
@@ -2008,6 +2020,7 @@ body.dark-mode .search-result-item:focus {
   white-space: pre-wrap;
   margin-bottom: 5px;
   text-align: justify;
+  text-align-last: right;
 }
 
 .comment-item {

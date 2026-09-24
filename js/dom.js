@@ -32,6 +32,8 @@ export const dom = {
   moreMenu: document.getElementById("more-menu"),
   historyPanel: document.getElementById("history-panel"),
   pageMenu: document.getElementById("page-menu"),
+  moveMenu: document.getElementById("move-menu"),
+  movePageList: document.getElementById("move-page-list"),
   diffModal: document.getElementById("diff-modal"),
   filterActiveBtn: document.getElementById("tool-filter-active"),
   detailsModal: document.getElementById("details-modal"),
@@ -45,7 +47,7 @@ export const dom = {
 
 /**
  * Hides every context-style menu (canvas, element, notes, more, page,
- * history panel, details-comment menu).
+ * move, history panel, details-comment menu).
  * @returns {void}
  */
 export function hideAllMenus() {
@@ -54,6 +56,7 @@ export function hideAllMenus() {
   dom.notesMenu.classList.add("hidden");
   dom.moreMenu.classList.add("hidden");
   if (dom.pageMenu) dom.pageMenu.classList.add("hidden");
+  if (dom.moveMenu) dom.moveMenu.classList.add("hidden");
   if (dom.detailsCommentMenu) dom.detailsCommentMenu.classList.add("hidden");
   if (dom.historyPanel) dom.historyPanel.classList.add("hidden");
 }
