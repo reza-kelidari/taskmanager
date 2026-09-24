@@ -60,9 +60,11 @@ function syncFilterUI() {
 }
 
 /**
- * Toggles the done-task filter and persists the preference. Callers are
- * responsible for re-running the layout afterwards (the button click and
- * the Ctrl+D shortcut both do).
+ * Toggles the done-task filter and persists the preference. While active,
+ * completed tasks are hidden along with non-root headers whose subtasks
+ * are all done (see {@link isNodeHidden}). Callers are responsible for
+ * re-running the layout afterwards (the button click and the Ctrl+D
+ * shortcut both do).
  *
  * @returns {void}
  */

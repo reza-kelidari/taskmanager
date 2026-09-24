@@ -7,6 +7,7 @@
 import { state } from "./state.js";
 import { dom } from "./dom.js";
 import { errorReporter, perfMonitor } from "./error.js";
+import { isNodeHidden } from "./utils.js";
 
 /**
  * Keeps a map of rendered node elements in sync with `state.nodes`.
@@ -78,8 +79,10 @@ class VirtualRenderer {
 
   /**
    * Applies position, state classes, title/label and connection points to
-   * a node element. Header elements rewrite their text content, so their
-   * connection points are detached and re-attached to survive it.
+   * a node element. Also syncs the `filter-hidden` class from
+   * {@link isNodeHidden} (done-task filter). Header elements rewrite their
+   * text content, so their connection points are detached and re-attached
+   * to survive it.
    *
    * @param {HTMLElement} el Node element.
    * @param {object} node Node data.
@@ -88,6 +91,7 @@ class VirtualRenderer {
   applyNodeStyles(el, node) {
     el.style.left = `${node.x}px`;
     el.style.top = `${node.y}px`;
+    el.classList.toggle("filter-hidden", isNodeHidden(node));
 
     if (node.parent) {
       el.classList.add("has-parent");

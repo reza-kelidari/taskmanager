@@ -19,8 +19,10 @@ const PROJECTED_THREAD_TOOLTIP_TEXT = "برخی از وظایف واسط مخف�
 
 /**
  * Synchronizes data-derived CSS classes on every rendered node element:
- * `has-parent` (any input exists), `parent-hidden` (direct primary parent
- * hidden by the done filter) and `cancelled`.
+ * `has-parent` (any input exists), `filter-hidden` (hidden by the
+ * done-task filter: completed tasks and fully-done non-root headers),
+ * `parent-hidden` (direct primary parent hidden by the done-task filter)
+ * and `cancelled`.
  *
  * @returns {void}
  */
@@ -29,6 +31,7 @@ function syncNodeClasses() {
     const el = getRenderedEl(node.id);
     if (!el) return;
     el.classList.toggle("has-parent", nodeParentIds(node).length > 0);
+    el.classList.toggle("filter-hidden", isNodeHidden(node));
     const parent = node.parent
       ? state.nodes.find((n) => String(n.id) === String(node.parent))
       : null;
@@ -39,8 +42,9 @@ function syncNodeClasses() {
 
 /**
  * Walks up the primary-parent chain from `node` and returns the closest
- * node that is not hidden by the done filter (the node itself when
- * visible). Cycle-guarded.
+ * node that is not hidden by the done-task filter (completed tasks and
+ * fully-done non-root headers; the node itself when visible).
+ * Cycle-guarded.
  *
  * @param {object} node Starting node.
  * @returns {object|null} Nearest visible node on the chain, or null.
@@ -300,6 +304,8 @@ export function requestDraw() {
  * Repaints every connection thread on the SVG layer.
  *
  * - One thread per input (primary parent + every extra parent).
+ * - Hidden nodes (completed tasks and fully-done non-root headers, see
+ *   {@link isNodeHidden}) are skipped entirely.
  * - The thread currently being dragged is omitted until the drag ends.
  * - Threads whose real source is hidden are drawn from the nearest
  *   visible ancestor instead, as solid "projected" lines carrying the

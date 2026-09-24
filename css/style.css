@@ -15,10 +15,10 @@
   --text-primary: #333;
   --text-secondary: #666;
   --text-muted: #888;
-  /* ✅ بوردر عمومی UI — ملایم (فقط کمی تیره‌تر از قبل) */
+  /* General UI border — soft (only slightly darker than before) */
   --border-color: #dcdcdc;
   --border-light: #e0e0e0;
-  /* ✅ بوردر پررنگ — فقط نودها و خطوط اتصال روی بوم */
+  /* Strong border — only nodes and canvas connection lines */
   --border-strong: #cccccc;
   --accent: #007bff;
   --accent-hover: #0056b3;
@@ -35,7 +35,7 @@
   --radius-lg: 20px;
   --radius-full: 999px;
   --transition: 0.2s ease;
-  /* سیستم مشترک نوار ابزار و منوهای تکمیلی */
+  /* Shared toolbar and submenu system */
   --menu-radius: 16px;
   --menu-padding: 6px;
   --menu-gap: 4px;
@@ -310,7 +310,7 @@ body.dark-mode .tool-btn.active-filter {
 }
 
 .tool-secondary {
-  /* کلاس فقط برای نشانه‌گذاری؛ layout با .tools-secondary کنترل می‌شود */
+  /* Marker class only; layout is controlled by .tools-secondary */
 }
 
 /* History panel (undo/redo list) */
@@ -515,8 +515,13 @@ body.dark-mode #diff-close:hover {
   overflow: auto;
 }
 
-/* نودهای انجام‌شده با فیلتر فعال، کاملاً از صفحه حذف می‌شوند */
+/* Completed nodes are fully removed from the canvas while the filter is active */
 body.filter-active .node.task.done {
+  display: none;
+}
+
+/* Non-root headers whose subtasks are all done are hidden as well */
+body.filter-active .node.header.filter-hidden {
   display: none;
 }
 
@@ -586,7 +591,7 @@ body.filter-active .node.task.done {
   overflow: visible;
 }
 
-/* ✅ خطوط اتصال — پررنگ (strong) */
+/* Connection lines — strong */
 .connection-line {
   stroke: var(--border-strong);
   stroke-dasharray: 5, 5;
@@ -594,17 +599,17 @@ body.filter-active .node.task.done {
   fill: none;
 }
 
-/* اتصال نمایشی (والد واسط مخفی) — خط ممتد */
+/* Projected connection (hidden intermediate parent) — solid line */
 .connection-line.projected {
   stroke-dasharray: none;
 }
 
-/* نخِ در حال جایگزینی — زرد (بعد از projected تعریف شده تا اولویت داشته باشد) */
+/* Thread being replaced — yellow (defined after projected so it takes precedence) */
 .connection-line.thread-target {
   stroke: var(--warning);
 }
 
-/* نوار هیت نامرئی نخ‌ها — قابل درگ و قابل هدف‌گیری */
+/* Invisible thread hit strip — draggable and targetable */
 .thread-hit {
   pointer-events: stroke;
   stroke: transparent;
@@ -616,7 +621,7 @@ body.filter-active .node.task.done {
   cursor: grabbing;
 }
 
-/* آیکون چشمِ خط‌خورده روی اتصال نمایشی */
+/* Eye-off icon on projected connections */
 .eye-off-icon {
   pointer-events: all;
   cursor: help;
@@ -665,7 +670,7 @@ body.dark-mode .eye-off-icon:hover .eye-pupil {
   fill: #cfcfcf;
 }
 
-/* تولتیپ اتصال نمایشی */
+/* Projected-connection tooltip */
 .lock-tooltip {
   position: fixed;
   z-index: 1200;
@@ -772,12 +777,12 @@ body.dark-mode .node.task.cancelled .task-label {
   background: transparent;
 }
 
-/* نقطه اتصال به والد فقط وقتی نود واقعاً ورودی دارد */
+/* Parent connection point only when the node actually has an input */
 .node:not(.has-parent) .cp-right {
   display: none;
 }
 
-/* والد مستقیم مخفی است — نقطه خاکستری: اتصال قابل جداسازی نیست */
+/* Direct parent is hidden — gray port: connection cannot be detached */
 .node.parent-hidden .cp-right {
   background-color: #9a9a9a;
 }

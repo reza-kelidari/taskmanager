@@ -1,8 +1,9 @@
 /**
  * @module utils
  * @description Shared, dependency-light helpers: toasts, Shamsi dates,
- * graph predicates (multi-input aware), done-filter visibility, and
- * localStorage-backed drafts for text fields.
+ * graph predicates (multi-input aware), done-filter visibility (completed
+ * tasks plus fully-done non-root headers), and localStorage-backed drafts
+ * for text fields.
  */
 import { CONFIG } from "./config.js";
 import { state } from "./state.js";
@@ -269,19 +270,91 @@ export function canConnect(sourceNode, targetNode) {
 }
 
 /**
- * Returns true while the done-task filter is active and the node is a
- * completed task. Such nodes are fully removed from the canvas; layout,
- * hit-testing and rendering must all skip them.
+ * Depth of a header in the header hierarchy (primary-parent chain).
+ * Root headings have depth 0, their direct sub-headings depth 1, etc.
+ *
+ * @param {object} node Header node.
+ * @returns {number} Number of header ancestors.
+ */
+export function headingDepth(node) {
+  let depth = 0;
+  let parentId = node.parent;
+  const guard = new Set();
+  while (parentId !== null && parentId !== undefined) {
+    const key = String(parentId);
+    if (guard.has(key)) break;
+    guard.add(key);
+    const parent = state.nodes.find((n) => String(n.id) === key);
+    if (!parent) break;
+    if (parent.type === "header") depth += 1;
+    parentId = parent.parent;
+  }
+  return depth;
+}
+
+/**
+ * Collects every descendant task of a header (primary children and
+ * extra-parent threads, traversed recursively through headers and tasks).
+ * Cycle-guarded for the multi-input DAG.
+ *
+ * @param {string} headerId Header id.
+ * @returns {Array<object>} Descendant task nodes.
+ */
+export function collectDescendantTasks(headerId) {
+  const tasks = [];
+  const visited = new Set([String(headerId)]);
+  const queue = [String(headerId)];
+  while (queue.length) {
+    const curId = queue.shift();
+    for (const n of state.nodes) {
+      const isChild =
+        String(n.parent ?? "") === curId ||
+        (Array.isArray(n.extraParents) &&
+          n.extraParents.some((id) => String(id) === curId));
+      if (!isChild) continue;
+      const key = String(n.id);
+      if (visited.has(key)) continue;
+      visited.add(key);
+      queue.push(key);
+      if (n.type === "task") tasks.push(n);
+    }
+  }
+  return tasks;
+}
+
+/**
+ * Whether a non-root header qualifies for auto-hiding under the done-task
+ * filter: depth >= 1 (second heading or deeper) with at least one
+ * descendant task and every descendant task marked done.
+ *
+ * @param {object} node Header node.
+ * @returns {boolean}
+ */
+export function isHeaderAutoHidden(node) {
+  if (!node || node.type !== "header") return false;
+  if (headingDepth(node) < 1) return false;
+  const tasks = collectDescendantTasks(node.id);
+  if (tasks.length === 0) return false;
+  return tasks.every((t) => !!t.done);
+}
+
+/**
+ * Returns true while the done-task filter is active and the node should be
+ * removed from the canvas:
+ * - completed tasks are always hidden;
+ * - non-root headers (second heading or deeper) are hidden only when all
+ *   of their subtasks are marked completed.
+ * Layout, hit-testing and rendering must all skip such nodes.
  *
  * @param {object} node Node to test.
  * @returns {boolean}
  */
 export function isNodeHidden(node) {
-  return (
-    document.body.classList.contains("filter-active") &&
-    node.type === "task" &&
-    !!node.done
-  );
+  if (!node) return false;
+  if (!document.body.classList.contains("filter-active")) return false;
+  if (node.type === "task") return !!node.done;
+  if (node.type === "header") return isHeaderAutoHidden(node);
+  return false;
 }
 
 /**
