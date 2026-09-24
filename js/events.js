@@ -1,10 +1,10 @@
 /**
  * @module events
  * @description Remaining global wiring: top-level toolbar buttons, the
- * notes/confirm dialogs, the node input modal, the search input, toast
- * hover-pause, canvas panning and JSON import. Also bootstraps the
- * focused sub-modules (toolbar menus, context menus, keyboard shortcuts,
- * diff modal).
+ * notes/confirm dialogs, the node input modal, the task details modal,
+ * the search input, toast hover-pause, canvas panning and JSON import.
+ * Also bootstraps the focused sub-modules (toolbar menus, context menus,
+ * keyboard shortcuts, diff modal).
  */
 import { state } from "./state.js";
 import { dom, positionFloating } from "./dom.js";
@@ -19,6 +19,7 @@ import { setupToolbarMenus } from "./toolbar-menus.js";
 import { setupContextMenus } from "./context-menus.js";
 import { setupKeyboardShortcuts } from "./keyboard.js";
 import { setupDiffModal } from "./diff.js";
+import { setupDetailsModal } from "./details.js";
 
 /**
  * @typedef {object} AppActions
@@ -49,6 +50,7 @@ export function setupEvents(actions) {
   setupContextMenus(actions);
   setupKeyboardShortcuts(actions);
   setupDiffModal();
+  setupDetailsModal();
 
   /* Notes menu / confirm dialog wiring */
 

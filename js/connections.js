@@ -21,8 +21,8 @@ const PROJECTED_THREAD_TOOLTIP_TEXT = "برخی از وظایف واسط مخف�
  * Synchronizes data-derived CSS classes on every rendered node element:
  * `has-parent` (any input exists), `filter-hidden` (hidden by the
  * done-task filter: completed tasks and fully-done non-root headers),
- * `parent-hidden` (direct primary parent hidden by the done-task filter)
- * and `cancelled`.
+ * `parent-hidden` (direct primary parent hidden by the done-task filter),
+ * `cancelled` and `suspended`.
  *
  * @returns {void}
  */
@@ -37,6 +37,7 @@ function syncNodeClasses() {
       : null;
     el.classList.toggle("parent-hidden", !!parent && isNodeHidden(parent));
     el.classList.toggle("cancelled", node.type === "task" && !!node.cancelled);
+    el.classList.toggle("suspended", node.type === "task" && !!node.suspended);
   });
 }
 

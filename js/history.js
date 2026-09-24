@@ -1,10 +1,13 @@
 /**
  * @module history
- * @description Undo/redo stack with localStorage persistence
- * (`tm-history-v1`), a bounded number of undoable steps, and labeled
+ * @description Undo/redo stack with IndexedDB persistence (the `history`
+ * store; a legacy localStorage payload under `tm-history-v1` is adopted
+ * once and then removed), a bounded number of undoable steps, and labeled
  * snapshots for the history panel.
  */
 import { CONFIG } from "./config.js";
+import { state } from "./state.js";
+import { saveHistory, loadHistory } from "./db.js";
 import { errorReporter } from "./error.js";
 
 const HISTORY_STORAGE_KEY = "tm-history-v1";
@@ -29,12 +32,19 @@ class History {
   }
 
   /**
-   * Persists the stack. Falls back to keeping only the last 10 entries
-   * when the full payload exceeds the storage quota.
+   * Persists the stack to IndexedDB (fire-and-forget; undo/redo stay
+   * synchronous against the in-memory stack). Falls back to the legacy
+   * localStorage payload — keeping only the last 10 entries when the
+   * full payload exceeds the storage quota — while the database is
+   * unavailable.
    * @private
    * @returns {void}
    */
   _save() {
+    if (state.db) {
+      saveHistory(this.stack, this.currentIndex);
+      return;
+    }
     try {
       localStorage.setItem(
         HISTORY_STORAGE_KEY,
@@ -58,35 +68,70 @@ class History {
   }
 
   /**
-   * Restores a previously persisted stack. Validates the payload shape and
-   * clamps the saved index into range.
+   * Validates a persisted payload and adopts it when well-formed,
+   * clamping the saved index into range.
    *
-   * @returns {boolean} True when a valid history was restored.
+   * @private
+   * @param {*} data Candidate payload.
+   * @returns {boolean} True when the payload was adopted.
    */
-  load() {
-    try {
-      const raw = localStorage.getItem(HISTORY_STORAGE_KEY);
-      if (!raw) return false;
-      const data = JSON.parse(raw);
-      if (
-        !data ||
-        !Array.isArray(data.stack) ||
-        data.stack.length === 0 ||
-        !data.stack.every((e) => e && Array.isArray(e.nodes))
-      ) {
-        return false;
-      }
-      this.stack = data.stack;
-      let idx = Number(data.currentIndex);
-      if (!Number.isInteger(idx)) idx = this.stack.length - 1;
-      this.currentIndex = Math.max(0, Math.min(idx, this.stack.length - 1));
-      this.updateButtons();
-      return true;
-    } catch (e) {
-      this.stack = [];
-      this.currentIndex = -1;
+  _adopt(data) {
+    if (
+      !data ||
+      !Array.isArray(data.stack) ||
+      data.stack.length === 0 ||
+      !data.stack.every((e) => e && Array.isArray(e.nodes))
+    ) {
       return false;
     }
+    this.stack = data.stack;
+    let idx = Number(data.currentIndex);
+    if (!Number.isInteger(idx)) idx = this.stack.length - 1;
+    this.currentIndex = Math.max(0, Math.min(idx, this.stack.length - 1));
+    this.updateButtons();
+    return true;
+  }
+
+  /**
+   * Reads the legacy localStorage payload, if any.
+   * @private
+   * @returns {*} Parsed payload or null.
+   */
+  _readLegacy() {
+    try {
+      const raw = localStorage.getItem(HISTORY_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /**
+   * Restores a previously persisted stack: IndexedDB first, then the
+   * legacy localStorage payload (migrated into IndexedDB on success).
+   *
+   * @returns {Promise<boolean>} True when a valid history was restored.
+   */
+  async load() {
+    try {
+      const stored = await loadHistory();
+      if (stored && this._adopt(stored)) return true;
+      const legacy = this._readLegacy();
+      if (legacy && this._adopt(legacy)) {
+        this._save();
+        try {
+          localStorage.removeItem(HISTORY_STORAGE_KEY);
+        } catch (_) {
+          /* legacy cleanup is best-effort */
+        }
+        return true;
+      }
+    } catch (e) {
+      errorReporter.report(e, { context: "History.load" });
+    }
+    this.stack = [];
+    this.currentIndex = -1;
+    return false;
   }
 
   /**

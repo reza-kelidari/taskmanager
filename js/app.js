@@ -250,7 +250,7 @@ async function init() {
       drawConnections();
     }
 
-    const historyRestored = history.load();
+    const historyRestored = await history.load();
     if (!historyRestored) {
       history.push(state.nodes, "شروع");
     }

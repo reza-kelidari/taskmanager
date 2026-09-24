@@ -33,10 +33,18 @@ export const dom = {
   historyPanel: document.getElementById("history-panel"),
   diffModal: document.getElementById("diff-modal"),
   filterActiveBtn: document.getElementById("tool-filter-active"),
+  detailsModal: document.getElementById("details-modal"),
+  detailsTitle: document.getElementById("details-title"),
+  detailsStatus: document.getElementById("details-status"),
+  detailsDesc: document.getElementById("details-desc"),
+  detailsComments: document.getElementById("details-comments"),
+  detailsCommentInput: document.getElementById("details-comment-input"),
+  detailsCommentMenu: document.getElementById("details-comment-menu"),
 };
 
 /**
- * Hides every context-style menu (canvas, element, notes, more, history panel).
+ * Hides every context-style menu (canvas, element, notes, more, history panel,
+ * details-comment menu).
  * @returns {void}
  */
 export function hideAllMenus() {
@@ -44,11 +52,12 @@ export function hideAllMenus() {
   dom.elementMenu.classList.add("hidden");
   dom.notesMenu.classList.add("hidden");
   dom.moreMenu.classList.add("hidden");
+  if (dom.detailsCommentMenu) dom.detailsCommentMenu.classList.add("hidden");
   if (dom.historyPanel) dom.historyPanel.classList.add("hidden");
 }
 
 /**
- * Hides every modal dialog (input, note, confirm, search, diff).
+ * Hides every modal dialog (input, note, confirm, search, diff, details).
  * @returns {void}
  */
 export function hideAllModals() {
@@ -57,6 +66,7 @@ export function hideAllModals() {
   dom.confirmModal.classList.add("hidden");
   dom.searchModal.classList.add("hidden");
   if (dom.diffModal) dom.diffModal.classList.add("hidden");
+  if (dom.detailsModal) dom.detailsModal.classList.add("hidden");
 }
 
 /**

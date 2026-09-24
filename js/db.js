@@ -11,7 +11,8 @@ import { errorReporter } from "./error.js";
 
 /**
  * Opens (or creates) the IndexedDB database and restores the saved canvas
- * pan offset from localStorage.
+ * pan offset from localStorage. Version 2 adds the `history` store for
+ * the undo/redo stack (v1 only had `nodes`).
  *
  * @returns {Promise<void>} Resolves when the DB handle is ready.
  * @rejects {Error} When the database cannot be opened.
@@ -19,11 +20,14 @@ import { errorReporter } from "./error.js";
 export function initDB() {
   return new Promise((resolve, reject) => {
     try {
-      const request = indexedDB.open("TaskManagerDB", 1);
+      const request = indexedDB.open("TaskManagerDB", 2);
       request.onupgradeneeded = (e) => {
         const database = e.target.result;
         if (!database.objectStoreNames.contains("nodes")) {
           database.createObjectStore("nodes", { keyPath: "id" });
+        }
+        if (!database.objectStoreNames.contains("history")) {
+          database.createObjectStore("history", { keyPath: "id" });
         }
       };
       request.onsuccess = (e) => {
@@ -109,12 +113,61 @@ export function loadNodes() {
 }
 
 /**
+ * Persists the undo/redo stack as a single `history` record (id "stack").
+ *
+ * @param {Array<object>} stack History entries (deep-copied snapshots).
+ * @param {number} currentIndex Index of the current state within the stack.
+ * @returns {Promise<boolean>} True when the write was accepted.
+ */
+export function saveHistory(stack, currentIndex) {
+  return new Promise((resolve) => {
+    try {
+      if (!state.db || !state.db.objectStoreNames.contains("history")) {
+        resolve(false);
+        return;
+      }
+      const tx = state.db.transaction("history", "readwrite");
+      tx.objectStore("history").put({ id: "stack", stack, currentIndex });
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => resolve(false);
+    } catch (error) {
+      errorReporter.report(error, { context: "saveHistory" });
+      resolve(false);
+    }
+  });
+}
+
+/**
+ * Loads the persisted undo/redo stack.
+ *
+ * @returns {Promise<{stack: Array<object>, currentIndex: number}|null>}
+ *   The stored payload, or null when absent/unavailable.
+ */
+export function loadHistory() {
+  return new Promise((resolve) => {
+    try {
+      if (!state.db || !state.db.objectStoreNames.contains("history")) {
+        resolve(null);
+        return;
+      }
+      const tx = state.db.transaction("history", "readonly");
+      const request = tx.objectStore("history").get("stack");
+      request.onsuccess = (e) => resolve(e.target.result || null);
+      request.onerror = () => resolve(null);
+    } catch (error) {
+      errorReporter.report(error, { context: "loadHistory" });
+      resolve(null);
+    }
+  });
+}
+
+/**
  * Sets the "done" flag of a task. This is a pure status mutation — the
  * graph structure is never touched here:
  *
  * - Marking done also marks every task ancestor up the primary chain
- *   done (clearing `cancelled` on any of them; the two states are
- *   exclusive). Headers are never marked.
+ *   done (clearing `cancelled`/`suspended` on any of them; the three
+ *   states are exclusive). Headers are never marked.
  * - Un-marking simply clears the flag. Detaching children is exclusively
  *   the cancelled feature's job (the independence operator) — an older
  *   version of this branch promoted direct children to the node's
@@ -129,6 +182,7 @@ export function setNodeDoneStatus(node, doneStatus) {
   if (doneStatus) {
     node.done = true;
     if (node.cancelled) node.cancelled = false;
+    if (node.suspended) node.suspended = false;
     saveNode(node);
     let current = node;
     while (current.parent) {
@@ -136,6 +190,7 @@ export function setNodeDoneStatus(node, doneStatus) {
       if (parent && parent.type === "task" && !parent.done) {
         parent.done = true;
         if (parent.cancelled) parent.cancelled = false;
+        if (parent.suspended) parent.suspended = false;
         saveNode(parent);
       }
       current = parent;
@@ -331,10 +386,11 @@ export function runIndependencer(node) {
 }
 
 /**
- * Sets the "cancelled" state of a task. Cancelling clears `done` (the two
- * states are mutually exclusive) and runs the independence operator so the
- * task's children attach directly to its parent. Un-cancelling only clears
- * the flag — the graph is intentionally left as-is.
+ * Sets the "cancelled" state of a task. Cancelling clears `done` and
+ * `suspended` (the three states are mutually exclusive) and runs the
+ * independence operator so the task's children attach directly to its
+ * parent. Un-cancelling only clears the flag — the graph is intentionally
+ * left as-is.
  *
  * @param {object} node Task node (mutated in place).
  * @param {boolean} cancelled Target state.
@@ -345,9 +401,30 @@ export function setNodeCancelledStatus(node, cancelled) {
   node.cancelled = !!cancelled;
   if (node.cancelled) {
     node.done = false;
+    node.suspended = false;
   }
   saveNode(node);
   if (node.cancelled) {
     runIndependencer(node);
   }
+}
+
+/**
+ * Sets the "suspended" state of a task. Suspending clears `done` and
+ * `cancelled` (the three states are mutually exclusive) but never
+ * touches the graph structure — children stay attached. Un-suspending
+ * only clears the flag.
+ *
+ * @param {object} node Task node (mutated in place).
+ * @param {boolean} suspended Target state.
+ * @returns {void}
+ */
+export function setNodeSuspendedStatus(node, suspended) {
+  if (node.type !== "task") return;
+  node.suspended = !!suspended;
+  if (node.suspended) {
+    node.done = false;
+    node.cancelled = false;
+  }
+  saveNode(node);
 }

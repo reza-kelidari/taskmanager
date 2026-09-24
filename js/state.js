@@ -14,6 +14,7 @@
  * @property {boolean}          isDrawing           Guard coalescing connection redraws into one per animation frame.
  * @property {string|null}      editingNodeId       Id of the node being created/edited in the input modal, null otherwise.
  * @property {string|null}      currentNoteNodeId   Id of the node whose notes menu is open.
+ * @property {string|null}      detailsNodeId       Id of the task shown in the details modal, null when closed.
  * @property {number}           editingNoteIndex    Index of the note being edited within the node's `notes` array; -1 when adding a new one.
  * @property {Function|null}    pendingDeleteAction Callback executed when the user confirms the destructive-action dialog.
  * @property {object|null}      panData             Active canvas pan session (`startX`, `startY`, `initLeft`, `initTop`). Null when idle.
@@ -28,6 +29,7 @@ export const state = {
   isDrawing: false,
   editingNodeId: null,
   currentNoteNodeId: null,
+  detailsNodeId: null,
   editingNoteIndex: -1,
   pendingDeleteAction: null,
   panData: null,

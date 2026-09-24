@@ -11,6 +11,7 @@ import {
   deleteNodeDB,
   setNodeDoneStatus,
   setNodeCancelledStatus,
+  setNodeSuspendedStatus,
 } from "./db.js";
 import { history } from "./history.js";
 import { drawConnections } from "./connections.js";
@@ -34,10 +35,14 @@ export function setupContextMenus(actions) {
    * Global contextmenu handler: prepares and positions the element menu
    * (on a node) or the canvas menu (on empty canvas). Task items are
    * mutually exclusive — "done" is hidden while cancelled and vice
-   * versa.
+   * versa. While the task details modal is open, right-clicks never
+   * close it (note right-clicks are handled by the details modal's own
+   * comment menu).
    */
   document.addEventListener("contextmenu", (e) => {
     e.preventDefault();
+    if (dom.detailsModal && !dom.detailsModal.classList.contains("hidden"))
+      return;
     hideAllMenus();
     hideAllModals();
 
@@ -53,20 +58,31 @@ export function setupContextMenus(actions) {
       const cancelItem = dom.elementMenu.querySelector(
         '[data-action="toggle-cancelled"]',
       );
+      const suspendItem = dom.elementMenu.querySelector(
+        '[data-action="toggle-suspended"]',
+      );
       const notesItem = dom.elementMenu.querySelector(
         '[data-action="comments"]',
       );
+      const editItem = dom.elementMenu.querySelector('[data-action="edit"]');
       if (nodeData.type === "task") {
-        toggleItem.style.display = nodeData.cancelled ? "none" : "flex";
-        toggleItem.innerText = nodeData.done ? "انجام نشده" : "انجام شده";
-        cancelItem.style.display = nodeData.done ? "none" : "flex";
-        cancelItem.innerText = nodeData.cancelled ? "ابطال لغوشدگی" : "لغوشده";
-        notesItem.style.display = "flex";
-        notesItem.innerText = "یادداشت‌ها";
+        toggleItem.style.display =
+          nodeData.cancelled || nodeData.suspended ? "none" : "flex";
+        toggleItem.innerText = nodeData.done ? "انجام‌نشده" : "انجام‌شده";
+        cancelItem.style.display =
+          nodeData.done || nodeData.suspended ? "none" : "flex";
+        cancelItem.innerText = nodeData.cancelled ? "لغونشده" : "لغوشده";
+        suspendItem.style.display =
+          nodeData.done || nodeData.cancelled ? "none" : "flex";
+        suspendItem.innerText = nodeData.suspended ? "تعلیق‌نشده" : "تعلیق‌شده";
+        notesItem.style.display = "none";
+        editItem.style.display = "none";
       } else {
         toggleItem.style.display = "none";
         cancelItem.style.display = "none";
+        suspendItem.style.display = "none";
         notesItem.style.display = "none";
+        editItem.style.display = "flex";
       }
       positionFloating(dom.elementMenu, e.clientX, e.clientY);
     } else if (e.target.closest("#canvas-wrapper")) {
@@ -85,8 +101,15 @@ export function setupContextMenus(actions) {
   /**
    * Dismiss every menu/modal on an outside press. The history panel and
    * modal contents are exempt so their own click handling survives.
+   * Right-clicks never dismiss the open task details modal.
    */
   document.addEventListener("mousedown", (e) => {
+    if (
+      e.button === 2 &&
+      dom.detailsModal &&
+      !dom.detailsModal.classList.contains("hidden")
+    )
+      return;
     if (
       !e.target.closest(".context-menu") &&
       !e.target.closest(".history-panel") &&
@@ -159,7 +182,7 @@ export function setupContextMenus(actions) {
               state.nodes,
               node.done
                 ? `انجام‌شده «${node.title}»`
-                : `لغو انجام «${node.title}»`,
+                : `انجام‌نشده «${node.title}»`,
             );
             actions.renderNodes();
             actions.autoArrange();
@@ -170,8 +193,20 @@ export function setupContextMenus(actions) {
             history.push(
               state.nodes,
               node.cancelled
-                ? `لغوشدن «${node.title}»`
-                : `ابطال لغوشدگی «${node.title}»`,
+                ? `لغوشده «${node.title}»`
+                : `لغونشده «${node.title}»`,
+            );
+            actions.renderNodes();
+            actions.autoArrange();
+            hideAllMenus();
+          }
+          if (action === "toggle-suspended") {
+            setNodeSuspendedStatus(node, !node.suspended);
+            history.push(
+              state.nodes,
+              node.suspended
+                ? `تعلیق‌شده «${node.title}»`
+                : `تعلیق‌نشده «${node.title}»`,
             );
             actions.renderNodes();
             actions.autoArrange();

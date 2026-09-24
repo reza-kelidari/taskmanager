@@ -95,10 +95,10 @@ function diffNotes(beforeNotes, afterNotes) {
 
 /**
  * Computes every semantic change between two node snapshots. Detected
- * kinds: `add`, `remove`, `title`, `done`, `cancelled`, `parent` (the
- * whole ordered input list) and `note`. Node coordinates (x/y) are
- * intentionally ignored — a pure move or re-arrangement is not a
- * semantic change.
+ * kinds: `add`, `remove`, `title`, `done`, `cancelled`, `suspended`,
+ * `parent` (the whole ordered input list) and `note`. Node coordinates
+ * (x/y) are intentionally ignored — a pure move or re-arrangement is not
+ * a semantic change.
  *
  * @param {Array<object>} beforeArr Previous snapshot.
  * @param {Array<object>} afterArr Next snapshot.
@@ -129,6 +129,9 @@ function computeDiff(beforeArr, afterArr) {
     }
     if (!!b.cancelled !== !!a.cancelled) {
       changes.push({ kind: "cancelled", node: a, cancelled: !!a.cancelled });
+    }
+    if (!!b.suspended !== !!a.suspended) {
+      changes.push({ kind: "suspended", node: a, suspended: !!a.suspended });
     }
     const bParents = nodeParentIds(b).map(String);
     const aParents = nodeParentIds(a).map(String);
@@ -178,7 +181,7 @@ function diffToTexts(before, after) {
       case "add":
         beforeLines.push("—");
         afterLines.push(
-          `${name}${c.node.done ? " ✓" : ""}${c.node.cancelled ? " ✕" : ""} (اضافه شد)`,
+          `${name}${c.node.done ? " ✓" : ""}${c.node.cancelled ? " ✕" : ""}${c.node.suspended ? " ⏸" : ""} (اضافه شد)`,
         );
         break;
       case "remove":
@@ -199,10 +202,18 @@ function diffToTexts(before, after) {
         break;
       case "cancelled":
         beforeLines.push(
-          `${c.node.title}: ${c.cancelled ? "فعال" : "لغوشده ✕"}`,
+          `${c.node.title}: ${c.cancelled ? "لغونشده" : "لغوشده ✕"}`,
         );
         afterLines.push(
-          `${c.node.title}: ${c.cancelled ? "لغوشده ✕" : "فعال"}`,
+          `${c.node.title}: ${c.cancelled ? "لغوشده ✕" : "لغونشده"}`,
+        );
+        break;
+      case "suspended":
+        beforeLines.push(
+          `${c.node.title}: ${c.suspended ? "تعلیق‌نشده" : "تعلیق‌شده"}`,
+        );
+        afterLines.push(
+          `${c.node.title}: ${c.suspended ? "تعلیق‌شده" : "تعلیق‌نشده"}`,
         );
         break;
       case "parent":

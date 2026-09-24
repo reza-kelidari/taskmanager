@@ -60,7 +60,15 @@ export function performSearch(query) {
     const type = document.createElement("div");
     type.className = "search-result-type";
     type.textContent =
-      node.type === "header" ? "سرفصل" : node.done ? "انجام شده" : "وظیفه";
+      node.type === "header"
+        ? "سرفصل"
+        : node.done
+          ? "انجام‌شده"
+          : node.cancelled
+            ? "لغوشده"
+            : node.suspended
+              ? "تعلیق‌شده"
+              : "وظیفه";
     item.appendChild(title);
     item.appendChild(type);
     item.addEventListener("click", () => {

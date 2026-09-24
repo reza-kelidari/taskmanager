@@ -17,6 +17,7 @@ import {
   saveNode,
 } from "./db.js";
 import { errorReporter } from "./error.js";
+import { showDetailsModal } from "./details.js";
 import {
   drawConnections,
   getHighlightedThread,
@@ -291,23 +292,27 @@ function handleDragEnd(e) {
 /**
  * Commits a node move: persists the new position, runs overlap
  * resolution, and records a history entry when the position actually
- * changed.
+ * changed. A press without movement on a task node opens its details
+ * modal instead.
  *
  * @returns {void}
  */
 function handleNodeDragEnd() {
-  if (!state.dragData.moved) return;
-
   const el = state.dragData.el;
   const id = el?.dataset?.id;
   if (!id) return;
 
+  const node = state.nodes.find((n) => n.id == id);
+  if (!node) return;
+
+  if (!state.dragData.moved) {
+    if (node.type === "task") showDetailsModal(node);
+    return;
+  }
+
   const newX = parseInt(el.style.left);
   const newY = parseInt(el.style.top);
   if (isNaN(newX) || isNaN(newY)) return;
-
-  const node = state.nodes.find((n) => n.id == id);
-  if (!node) return;
 
   const oldX = node.x;
   const oldY = node.y;

@@ -239,6 +239,103 @@
     </div>
 
     <div
+      id="details-modal"
+      class="hidden"
+      role="dialog"
+      aria-label="جزئیات وظیفه"
+    >
+      <div class="modal-content details-content">
+        <div class="details-header">
+          <span id="details-label">جزئیات وظیفه</span>
+          <button id="details-close" aria-label="بستن">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="details-body">
+          <div class="details-info">
+            <div class="details-title-row">
+              <h3 id="details-title"></h3>
+              <span id="details-status" class="status-capsule hidden"></span>
+            </div>
+            <p id="details-desc"></p>
+          </div>
+          <div class="details-chat">
+            <div id="details-comments"></div>
+            <div class="details-input-row">
+              <textarea
+                id="details-comment-input"
+                placeholder="نوشتن یادداشت جدید…"
+                aria-label="متن یادداشت جدید"
+                rows="1"
+              ></textarea>
+              <button id="details-comment-send" aria-label="ارسال یادداشت" title="ارسال یادداشت">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      id="details-comment-menu"
+      class="context-menu hidden"
+      role="menu"
+      aria-label="منوی یادداشت"
+    >
+      <div
+        class="menu-item"
+        data-action="copy-comment"
+        role="menuitem"
+        tabindex="0"
+      >
+        کپی
+      </div>
+      <div
+        class="menu-item"
+        data-action="edit-comment"
+        role="menuitem"
+        tabindex="0"
+      >
+        ویرایش
+      </div>
+      <div
+        class="menu-item"
+        data-action="delete-comment"
+        role="menuitem"
+        tabindex="0"
+      >
+        حذف
+      </div>
+    </div>
+
+    <div
       id="more-menu"
       class="context-menu hidden"
       role="menu"
@@ -377,7 +474,7 @@
         role="menuitem"
         tabindex="0"
       >
-        انجام شده
+        انجام‌شده
       </div>
       <div
         class="menu-item"
@@ -386,6 +483,14 @@
         tabindex="0"
       >
         لغوشده
+      </div>
+      <div
+        class="menu-item"
+        data-action="toggle-suspended"
+        role="menuitem"
+        tabindex="0"
+      >
+        تعلیق‌شده
       </div>
       <div
         class="menu-item"

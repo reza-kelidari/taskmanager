@@ -367,7 +367,8 @@ export function shouldShowHoverBox() {
     !dom.contextMenu.classList.contains("hidden") ||
     !dom.notesMenu.classList.contains("hidden") ||
     !dom.noteModal.classList.contains("hidden") ||
-    !dom.confirmModal.classList.contains("hidden")
+    !dom.confirmModal.classList.contains("hidden") ||
+    (dom.detailsModal && !dom.detailsModal.classList.contains("hidden"))
   );
 }
 
