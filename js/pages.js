@@ -35,6 +35,8 @@ export const DEFAULT_CONFIRM_TEXT = "آیا از حذف این یادداشت ا
 let menuPageId = null;
 /** Id of the page being dragged for reorder; null when idle. */
 let dragPageId = null;
+/** Tab element being dragged (removed from the list once underway). */
+let dragTabEl = null;
 /** Drop target: `{id, after}` or `{append:true}`; null when none. */
 let dropTarget = null;
 /** Standalone straight drop marker between tabs. */
@@ -391,18 +393,18 @@ function movePage(dragId, target) {
 
 /**
  * Clears the drag-reorder state: removes the marker and restores the
- * dragged tab's opacity.
+ * dragged tab into the list.
  * @returns {void}
  */
 function cleanupDrag() {
   dragPageId = null;
   dropTarget = null;
   if (markerEl) markerEl.classList.add("hidden");
-  document
-    .querySelectorAll("#tabs-list .tab")
-    .forEach((el) => {
-      el.style.opacity = "";
-    });
+  if (dragTabEl) {
+    dragTabEl.style.display = "";
+    dragTabEl.style.opacity = "";
+    dragTabEl = null;
+  }
 }
 
 /**
@@ -558,6 +560,7 @@ export function setupPages() {
       return;
     }
     dragPageId = tab.dataset.id;
+    dragTabEl = tab;
     e.dataTransfer.effectAllowed = "move";
     try {
       e.dataTransfer.setData("text/plain", dragPageId);
@@ -566,8 +569,8 @@ export function setupPages() {
     }
     // The native drag image snapshots the source, so translucency set
     // here (inline, independent of stylesheet caching) travels with the
-    // item under the pointer. Unlike display:none (which cancels the
-    // native drag in Chrome), opacity is safe.
+    // item under the pointer. The tab itself leaves the list on the
+    // first dragover below — hiding it here would cancel the drag.
     tab.style.opacity = "0.35";
     ensureMarker();
   });
@@ -575,6 +578,10 @@ export function setupPages() {
     if (!dragPageId) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
+    // The drag is safely underway now: remove the tab from the list.
+    if (dragTabEl && dragTabEl.style.display !== "none") {
+      dragTabEl.style.display = "none";
+    }
     const tab = e.target.closest?.(".tab");
     if (
       !tab ||
