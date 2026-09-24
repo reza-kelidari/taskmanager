@@ -33,6 +33,12 @@ export const DEFAULT_CONFIRM_TEXT = "آیا از حذف این یادداشت ا
 
 /** Id of the page targeted by the tab right-click menu. */
 let menuPageId = null;
+/** Id of the page being dragged for reorder; null when idle. */
+let dragPageId = null;
+/** Drop target: `{id, after}` or `{append:true}`; null when none. */
+let dropTarget = null;
+/** Standalone straight drop marker between tabs. */
+let markerEl = null;
 
 const CHECK_SVG =
   '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
@@ -85,6 +91,16 @@ export async function ensurePages() {
       state.pages.push(first);
       await savePage(first);
     }
+    state.pages.sort(
+      (a, b) =>
+        (a.order ?? a.createdAt ?? 0) - (b.order ?? b.createdAt ?? 0),
+    );
+    state.pages.forEach((p, i) => {
+      if (p.order !== i) {
+        p.order = i;
+        savePage(p);
+      }
+    });
     const byId = new Map(state.pages.map((b) => [String(b.id), b]));
     const firstId = state.pages[0].id;
     state.nodes.forEach((node) => {
@@ -183,6 +199,7 @@ export async function createPage() {
     id: genPageId(),
     title: nextPageTitle(),
     createdAt: Date.now(),
+    order: state.pages.length,
     viewX: Math.round(window.innerWidth / 2),
     viewY: Math.round(window.innerHeight / 2),
   };
@@ -343,8 +360,87 @@ function showPageMenu(id, x, y) {
 }
 
 /**
+ * Moves a dragged page to a drop target, persists the new order and
+ * rebuilds the tabs.
+ *
+ * @param {string} dragId Dragged page id.
+ * @param {{id?: string, after?: boolean, append?: boolean}} target Drop target.
+ * @returns {void}
+ */
+function movePage(dragId, target) {
+  const from = state.pages.findIndex((b) => String(b.id) === String(dragId));
+  if (from < 0) return;
+  const [moved] = state.pages.splice(from, 1);
+  if (target.append || state.pages.length === 0) {
+    state.pages.push(moved);
+  } else {
+    let idx = state.pages.findIndex((b) => String(b.id) === String(target.id));
+    if (idx < 0) {
+      state.pages.push(moved);
+    } else {
+      if (target.after) idx += 1;
+      state.pages.splice(idx, 0, moved);
+    }
+  }
+  state.pages.forEach((p, i) => {
+    p.order = i;
+    savePage(p);
+  });
+  renderPageTabs();
+}
+
+/**
+ * Clears the drag-reorder state: removes the marker and restores the
+ * dragged tab's opacity.
+ * @returns {void}
+ */
+function cleanupDrag() {
+  dragPageId = null;
+  dropTarget = null;
+  if (markerEl) markerEl.classList.add("hidden");
+  document
+    .querySelectorAll("#tabs-list .tab")
+    .forEach((el) => {
+      el.style.opacity = "";
+    });
+}
+
+/**
+ * Lazily creates the standalone drop marker (a straight vertical line
+ * positioned between tabs).
+ * @returns {HTMLElement} Marker element.
+ */
+function ensureMarker() {
+  if (!markerEl) {
+    markerEl = document.createElement("div");
+    markerEl.id = "tab-drop-marker";
+    markerEl.className = "hidden";
+    document.body.appendChild(markerEl);
+  }
+  return markerEl;
+}
+
+/**
+ * Positions the drop marker as a vertical line at viewport X,
+ * spanning the tab height.
+ *
+ * @param {number} x Viewport X of the line.
+ * @param {number} top Viewport top.
+ * @param {number} height Line height.
+ * @returns {void}
+ */
+function positionMarker(x, top, height) {
+  const m = ensureMarker();
+  m.style.left = `${x - 1}px`;
+  m.style.top = `${top}px`;
+  m.style.height = `${height}px`;
+  m.classList.remove("hidden");
+}
+
+/**
  * Starts inline renaming of a page tab: swaps the title for an input
  * plus a check button (click/Enter/blur commits, Escape cancels).
+ * Dragging is disabled while renaming.
  *
  * @param {HTMLElement} tabEl Tab element.
  * @param {object} page Page record.
@@ -355,6 +451,7 @@ function startPageRename(tabEl, page) {
   if (!label || tabEl.querySelector(".tab-rename-input")) return;
   label.style.display = "none";
   tabEl.classList.add("editing");
+  tabEl.draggable = false;
   const input = document.createElement("input");
   input.className = "tab-rename-input";
   input.value = page.title;
@@ -407,8 +504,9 @@ function startPageRename(tabEl, page) {
 }
 
 /**
- * Rebuilds the tab bar from `state.pages`. Clicking an inactive tab
- * switches to it; clicking the active tab's title renames it.
+ * Rebuilds the tab bar from `state.pages`. Tabs are draggable for
+ * reorder. Clicking an inactive tab switches to it; clicking the active
+ * tab's title renames it.
  * @returns {void}
  */
 export function renderPageTabs() {
@@ -419,6 +517,7 @@ export function renderPageTabs() {
     const tab = document.createElement("div");
     tab.className = "tab";
     tab.dataset.id = page.id;
+    tab.draggable = true;
     tab.setAttribute("role", "tab");
     const active = String(page.id) === String(state.activePageId);
     tab.setAttribute("aria-selected", String(active));
@@ -440,8 +539,8 @@ export function renderPageTabs() {
 }
 
 /**
- * Wires the "+" (new page) button, the tab right-click menu and its
- * delete item. Call once during bootstrapping.
+ * Wires the "+" (new page) button, drag-reorder of tabs, the tab
+ * right-click menu and its delete item. Call once during bootstrapping.
  * @returns {void}
  */
 export function setupPages() {
@@ -451,6 +550,61 @@ export function setupPages() {
       e.stopPropagation();
       createPage();
     });
+  const list = document.getElementById("tabs-list");
+  list?.addEventListener("dragstart", (e) => {
+    const tab = e.target.closest?.(".tab");
+    if (!tab || tab.querySelector(".tab-rename-input")) {
+      e.preventDefault();
+      return;
+    }
+    dragPageId = tab.dataset.id;
+    e.dataTransfer.effectAllowed = "move";
+    try {
+      e.dataTransfer.setData("text/plain", dragPageId);
+    } catch (_) {
+      /* Firefox requires setData to start dragging */
+    }
+    // The native drag image snapshots the source, so translucency set
+    // here (inline, independent of stylesheet caching) travels with the
+    // item under the pointer. Unlike display:none (which cancels the
+    // native drag in Chrome), opacity is safe.
+    tab.style.opacity = "0.35";
+    ensureMarker();
+  });
+  list?.addEventListener("dragover", (e) => {
+    if (!dragPageId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    const tab = e.target.closest?.(".tab");
+    if (
+      !tab ||
+      tab.dataset.id === dragPageId ||
+      tab.querySelector(".tab-rename-input")
+    ) {
+      dropTarget = { append: true };
+      const lr = list.getBoundingClientRect();
+      positionMarker(lr.left, lr.top, lr.height);
+      return;
+    }
+    // RTL bar: the right edge means "before", the left edge "after".
+    const r = tab.getBoundingClientRect();
+    const after = e.clientX < r.left + r.width / 2;
+    positionMarker(
+      after ? r.left : r.right,
+      r.top,
+      r.height,
+    );
+    dropTarget = { id: tab.dataset.id, after };
+  });
+  list?.addEventListener("dragleave", () => {
+    if (markerEl) markerEl.classList.add("hidden");
+  });
+  list?.addEventListener("drop", (e) => {
+    e.preventDefault();
+    if (dragPageId && dropTarget) movePage(dragPageId, dropTarget);
+    cleanupDrag();
+  });
+  list?.addEventListener("dragend", () => cleanupDrag());
   document.getElementById("tabs-list")?.addEventListener("contextmenu", (e) => {
     const tab = e.target.closest?.(".tab");
     if (!tab) return;

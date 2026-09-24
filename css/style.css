@@ -1182,6 +1182,17 @@ body.dark-mode .tab:hover {
   color: #fff;
 }
 
+/* Standalone straight drop marker between tabs */
+#tab-drop-marker {
+  position: fixed;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 6px rgba(0, 123, 255, 0.6);
+  pointer-events: none;
+  z-index: 1200;
+}
+
 .tab-title {
   overflow: hidden;
   text-overflow: ellipsis;
