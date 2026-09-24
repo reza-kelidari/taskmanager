@@ -336,7 +336,7 @@ function startEditComment(index) {
 
   actions.innerHTML = "";
   const saveBtn = document.createElement("button");
-  saveBtn.className = "chat-action-btn";
+  saveBtn.className = "save-icon-btn";
   saveBtn.title = "ذخیره";
   saveBtn.setAttribute("aria-label", "ذخیره ویرایش");
   saveBtn.innerHTML = SAVE_SVG;
@@ -460,26 +460,40 @@ function renderDetailsInfo(node) {
 }
 
 /**
- * Builds the save/cancel row for info-pane editing.
+ * Builds an accent save button with check icon + "ذخیره" text.
  *
  * @param {Function} onSave Save handler.
- * @param {Function} onCancel Cancel handler.
- * @returns {HTMLElement} Actions row.
+ * @returns {HTMLElement} Save button.
  */
-function buildInfoActions(onSave, onCancel) {
-  const row = document.createElement("div");
-  row.className = "details-edit-actions";
+function buildCheckButton(onSave) {
   const save = document.createElement("button");
-  save.className = "details-save-btn";
-  save.title = "تایید";
-  save.setAttribute("aria-label", "تایید ویرایش");
-  save.innerHTML = `${SAVE_SVG}<span>تایید</span>`;
+  save.className = "save-text-btn";
+  save.title = "ذخیره";
+  save.setAttribute("aria-label", "ذخیره");
+  save.innerHTML = `${SAVE_SVG}<span>ذخیره</span>`;
+  const doSave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onSave();
+  };
+  save.addEventListener("pointerdown", doSave);
+  save.addEventListener("mousedown", doSave);
   save.addEventListener("click", (e) => {
     e.stopPropagation();
     onSave();
   });
+  return save;
+}
+
+/**
+ * Builds a gray cancel button with cross icon + "لغو" text.
+ *
+ * @param {Function} onCancel Cancel handler.
+ * @returns {HTMLElement} Cancel button.
+ */
+function buildCrossButton(onCancel) {
   const cancel = document.createElement("button");
-  cancel.className = "details-cancel-btn";
+  cancel.className = "cancel-text-btn";
   cancel.title = "لغو";
   cancel.setAttribute("aria-label", "لغو ویرایش");
   cancel.innerHTML = `${CANCEL_SVG}<span>لغو</span>`;
@@ -487,9 +501,7 @@ function buildInfoActions(onSave, onCancel) {
     e.stopPropagation();
     onCancel();
   });
-  row.appendChild(save);
-  row.appendChild(cancel);
-  return row;
+  return cancel;
 }
 
 /**
@@ -502,7 +514,9 @@ function cancelInfoEdit() {
 }
 
 /**
- * Starts inline editing of the task title (click on the title).
+ * Starts inline editing of the task title (click on the title): input
+ * with a check+text save button beside it. Clicking anywhere else
+ * cancels; only the save button saves.
  * @returns {void}
  */
 function startTitleEdit() {
@@ -514,13 +528,16 @@ function startTitleEdit() {
   const h3 = dom.detailsTitle;
   h3.classList.add("editing");
   h3.innerHTML = "";
+  const row = document.createElement("div");
+  row.className = "details-title-edit-row";
   const input = document.createElement("input");
   input.className = "details-edit-input";
   input.value = node.title ?? "";
   input.maxLength = 25;
   input.setAttribute("aria-label", "ویرایش عنوان");
-  h3.appendChild(input);
-  h3.appendChild(buildInfoActions(saveTitleEdit, cancelInfoEdit));
+  row.appendChild(input);
+  row.appendChild(buildCheckButton(saveTitleEdit));
+  h3.appendChild(row);
   input.focus();
   input.select();
   input.addEventListener("click", (e) => e.stopPropagation());
@@ -534,6 +551,7 @@ function startTitleEdit() {
       cancelInfoEdit();
     }
   });
+  input.addEventListener("blur", () => cancelInfoEdit());
 }
 
 /**
@@ -577,11 +595,16 @@ function startDescEdit() {
   area.rows = 2;
   area.setAttribute("aria-label", "ویرایش توضیحات");
   p.appendChild(area);
-  p.appendChild(buildInfoActions(saveDescEdit, cancelInfoEdit));
+  const actions = document.createElement("div");
+  actions.className = "details-edit-actions";
+  actions.appendChild(buildCheckButton(saveDescEdit));
+  actions.appendChild(buildCrossButton(cancelInfoEdit));
+  p.appendChild(actions);
   autoGrow(area);
   area.focus();
   area.addEventListener("click", (e) => e.stopPropagation());
   area.addEventListener("input", () => autoGrow(area));
+  area.addEventListener("blur", () => cancelInfoEdit());
   area.addEventListener("keydown", (e) => {
     e.stopPropagation();
     if (e.key === "Escape") {

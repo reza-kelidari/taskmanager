@@ -33,6 +33,10 @@ export const DEFAULT_CONFIRM_TEXT = "آیا از حذف این یادداشت ا
 
 /** Id of the page targeted by the tab right-click menu. */
 let menuPageId = null;
+/** Whether the card title is being renamed (blocks card refreshes). */
+let cardRenaming = false;
+/** Whether the card description is being edited (blocks refreshes). */
+let descEditing = false;
 /** Id of the page being dragged for reorder; null when idle. */
 let dragPageId = null;
 /** Tab element being dragged (removed from the list once underway). */
@@ -98,10 +102,16 @@ export async function ensurePages() {
         (a.order ?? a.createdAt ?? 0) - (b.order ?? b.createdAt ?? 0),
     );
     state.pages.forEach((p, i) => {
+      let dirty = false;
       if (p.order !== i) {
         p.order = i;
-        savePage(p);
+        dirty = true;
       }
+      if (p.desc == null) {
+        p.desc = "";
+        dirty = true;
+      }
+      if (dirty) savePage(p);
     });
     const byId = new Map(state.pages.map((b) => [String(b.id), b]));
     const firstId = state.pages[0].id;
@@ -147,9 +157,97 @@ export async function ensurePages() {
     });
     renderPageTabs();
     restoreActiveView();
+    updatePageCard();
   } catch (error) {
     errorReporter.report(error, { context: "ensurePages" });
   }
+}
+
+/**
+ * Refreshes the page info card: the active page title plus its
+ * description (placeholder when empty) for the hover reveal.
+ * Skipped while the card title or description is being edited.
+ * @returns {void}
+ */
+export function updatePageCard() {
+  if (cardRenaming || descEditing) return;
+  const titleEl = document.getElementById("page-card-title");
+  const descEl = document.getElementById("page-desc");
+  const page = state.pages.find(
+    (b) => String(b.id) === String(state.activePageId),
+  );
+  if (titleEl) titleEl.textContent = page ? page.title : "";
+  if (!descEl) return;
+  const desc = (page?.desc ?? "").trim();
+  descEl.textContent = desc.length === 0 ? "برای افزودن توضیحات کلیک کنید" : desc;
+  descEl.classList.toggle("empty", desc.length === 0);
+}
+
+/**
+ * Starts inline editing of the page description: swaps it for a
+ * textarea plus a check+text save button. Clicking anywhere else
+ * cancels; only the save button saves.
+ * @returns {void}
+ */
+function startDescEdit() {
+  const descEl = document.getElementById("page-desc");
+  const page = state.pages.find(
+    (b) => String(b.id) === String(state.activePageId),
+  );
+  if (!descEl || !page || descEl.querySelector(".page-desc-input")) return;
+  descEditing = true;
+  descEl.classList.remove("empty");
+  descEl.innerHTML = "";
+  const area = document.createElement("textarea");
+  area.className = "page-desc-input";
+  area.value = page.desc ?? "";
+  area.rows = 3;
+  area.setAttribute("aria-label", "ویرایش توضیحات صفحه");
+  const row = document.createElement("div");
+  row.className = "page-desc-row";
+  const save = document.createElement("button");
+  save.className = "save-text-btn";
+  save.title = "ذخیره";
+  save.setAttribute("aria-label", "ذخیره");
+  save.innerHTML = `${CHECK_SVG}<span>ذخیره</span>`;
+  row.appendChild(save);
+  descEl.appendChild(area);
+  descEl.appendChild(row);
+  area.focus();
+  let done = false;
+  const commit = async (saveIt) => {
+    if (done) return;
+    done = true;
+    if (saveIt) {
+      page.desc = area.value.trim();
+      await persistPage(page);
+    }
+    descEditing = false;
+    updatePageCard();
+  };
+  area.addEventListener("click", (e) => e.stopPropagation());
+  const doSave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    commit(true);
+  };
+  save.addEventListener("pointerdown", doSave);
+  save.addEventListener("mousedown", doSave);
+  save.addEventListener("click", (e) => {
+    e.stopPropagation();
+    commit(true);
+  });
+  area.addEventListener("keydown", (e) => {
+    e.stopPropagation();
+    if (e.key === "Escape") {
+      e.preventDefault();
+      commit(false);
+    } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      commit(true);
+    }
+  });
+  area.addEventListener("blur", () => commit(false));
 }
 
 /**
@@ -188,6 +286,7 @@ export function setActivePage(id) {
   renderNodes();
   drawConnections();
   updateEmptyState();
+  updatePageCard();
 }
 
 /**
@@ -202,6 +301,7 @@ export async function createPage() {
     title: nextPageTitle(),
     createdAt: Date.now(),
     order: state.pages.length,
+    desc: "",
     viewX: Math.round(window.innerWidth / 2),
     viewY: Math.round(window.innerHeight / 2),
   };
@@ -440,47 +540,48 @@ function positionMarker(x, top, height) {
 }
 
 /**
- * Starts inline renaming of a page tab: swaps the title for an input
+ * Starts inline renaming of the page card title: swaps it for an input
  * plus a check button (click/Enter/blur commits, Escape cancels).
- * Dragging is disabled while renaming.
- *
- * @param {HTMLElement} tabEl Tab element.
- * @param {object} page Page record.
  * @returns {void}
  */
-function startPageRename(tabEl, page) {
-  const label = tabEl.querySelector(".tab-title");
-  if (!label || tabEl.querySelector(".tab-rename-input")) return;
-  label.style.display = "none";
-  tabEl.classList.add("editing");
-  tabEl.draggable = false;
+function startCardRename() {
+  const titleEl = document.getElementById("page-card-title");
+  const page = state.pages.find(
+    (b) => String(b.id) === String(state.activePageId),
+  );
+  if (!titleEl || !page || titleEl.querySelector(".card-rename-input"))
+    return;
+  cardRenaming = true;
+  titleEl.innerHTML = "";
   const input = document.createElement("input");
-  input.className = "tab-rename-input";
+  input.className = "card-rename-input";
   input.value = page.title;
   input.maxLength = 25;
   input.setAttribute("aria-label", "ویرایش عنوان صفحه");
   const save = document.createElement("button");
-  save.className = "tab-rename-save";
+  save.className = "card-rename-save";
   save.title = "تایید";
   save.setAttribute("aria-label", "تایید");
   save.innerHTML = CHECK_SVG;
-  tabEl.appendChild(input);
-  tabEl.appendChild(save);
+  titleEl.appendChild(input);
+  titleEl.appendChild(save);
   input.focus();
   input.select();
   let done = false;
-  // Every exit path rebuilds the tabs so the editor always closes,
+  // Every exit path refreshes the card so the editor always closes,
   // even when the title is unchanged or empty (reverts).
   const commit = async (saveIt) => {
     if (done) return;
     done = true;
     if (saveIt) await renamePage(page.id, input.value);
+    cardRenaming = false;
     renderPageTabs();
+    updatePageCard();
   };
   input.addEventListener("click", (e) => e.stopPropagation());
   // Save deterministically on pointerdown/mousedown (focus is kept, so
   // no blur fires and the button cannot disappear before mouseup): the
-  // later click is a guarded no-op and the tab never sees the press.
+  // later click is a guarded no-op.
   const doSave = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -507,8 +608,7 @@ function startPageRename(tabEl, page) {
 
 /**
  * Rebuilds the tab bar from `state.pages`. Tabs are draggable for
- * reorder. Clicking an inactive tab switches to it; clicking the active
- * tab's title renames it.
+ * reorder; clicking a tab switches to it.
  * @returns {void}
  */
 export function renderPageTabs() {
@@ -530,11 +630,7 @@ export function renderPageTabs() {
     tab.appendChild(label);
     tab.addEventListener("click", (e) => {
       e.stopPropagation();
-      if (String(page.id) === String(state.activePageId)) {
-        startPageRename(tab, page);
-      } else {
-        setActivePage(page.id);
-      }
+      setActivePage(page.id);
     });
     list.appendChild(tab);
   });
@@ -552,10 +648,26 @@ export function setupPages() {
       e.stopPropagation();
       createPage();
     });
+  // Refresh card stats on every hover so counts are always current.
+  document
+    .getElementById("page-card")
+    ?.addEventListener("mouseenter", () => updatePageCard());
+  document
+    .getElementById("page-card-title")
+    ?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      startCardRename();
+    });
+  document
+    .getElementById("page-desc")
+    ?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      startDescEdit();
+    });
   const list = document.getElementById("tabs-list");
   list?.addEventListener("dragstart", (e) => {
     const tab = e.target.closest?.(".tab");
-    if (!tab || tab.querySelector(".tab-rename-input")) {
+    if (!tab) {
       e.preventDefault();
       return;
     }
@@ -583,11 +695,7 @@ export function setupPages() {
       dragTabEl.style.display = "none";
     }
     const tab = e.target.closest?.(".tab");
-    if (
-      !tab ||
-      tab.dataset.id === dragPageId ||
-      tab.querySelector(".tab-rename-input")
-    ) {
+    if (!tab || tab.dataset.id === dragPageId) {
       dropTarget = { append: true };
       const lr = list.getBoundingClientRect();
       positionMarker(lr.left, lr.top, lr.height);

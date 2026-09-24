@@ -705,51 +705,96 @@ body.dark-mode #details-desc:not(.editing):hover {
   margin-top: 8px;
 }
 
-.details-save-btn {
-  display: flex;
-  flex: none;
-  width: fit-content;
+.save-icon-btn {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  border-radius: 50%;
+  border: none;
   background: var(--accent);
   color: #fff;
-  border: none;
-  padding: 3px 8px;
-  border-radius: var(--radius-sm);
   cursor: pointer;
-  font-family: inherit;
-  font-size: 11px;
   transition: background var(--transition);
 }
 
-.details-save-btn:hover {
+.save-icon-btn:hover {
   background: var(--accent-hover);
 }
 
-.details-save-btn svg,
-.details-cancel-btn svg {
-  width: 10px;
-  height: 10px;
+.save-icon-btn svg {
+  width: 13px;
+  height: 13px;
+  display: block;
+}
+
+.save-text-btn {
+  flex: none;
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  transition: background var(--transition);
+}
+
+.save-text-btn:hover {
+  background: var(--accent-hover);
+}
+
+.save-text-btn svg {
+  width: 12px;
+  height: 12px;
   display: block;
   flex-shrink: 0;
 }
 
-.details-cancel-btn {
-  display: flex;
+.cancel-text-btn {
   flex: none;
   width: fit-content;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 4px;
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
+  gap: 6px;
+  background: #d7d7d7;
+  color: #333;
   border: none;
-  padding: 3px 8px;
+  padding: 8px 16px;
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-family: inherit;
-  font-size: 11px;
+  font-size: 12px;
+}
+
+body.dark-mode .cancel-text-btn {
+  background: #555;
+  color: #eee;
+}
+
+.cancel-text-btn svg {
+  width: 12px;
+  height: 12px;
+  display: block;
+  flex-shrink: 0;
+}
+
+.details-title-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.details-title-edit-row .details-edit-input {
+  flex: 1;
+  min-width: 0;
 }
 
 .status-capsule {
@@ -1117,6 +1162,188 @@ body.filter-active .node.header.filter-hidden {
   z-index: 1000;
 }
 
+/* Page info card (top-left): title always visible, details expand on hover */
+#page-card {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 1000;
+  width: 225px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+body.dark-mode #page-card {
+  background: rgba(40, 40, 40, 0.85);
+}
+
+#page-card-title {
+  font-size: 14px;
+  line-height: 22px;
+  height: 30px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 4px 8px;
+  margin: -4px -8px;
+  transition: background var(--transition);
+}
+
+#page-card-title:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+body.dark-mode #page-card-title:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.card-rename-input {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.card-rename-input:focus {
+  outline: none;
+}
+
+.card-rename-save {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.card-rename-save:hover {
+  background: var(--accent-hover);
+}
+
+.card-rename-save svg {
+  width: 12px;
+  height: 12px;
+  display: block;
+}
+
+#page-card-title:has(.card-rename-input) {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: visible;
+}
+
+#page-desc {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  visibility: hidden;
+  margin-top: 0;
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 4px 8px;
+  margin: -4px -8px;
+  transition:
+    max-height 0.22s ease,
+    opacity 0.18s ease,
+    margin-top 0.22s ease,
+    background var(--transition);
+}
+
+#page-card:hover #page-desc,
+#page-card:has(.card-rename-input) #page-desc,
+#page-card:has(.page-desc-input) #page-desc {
+  max-height: 220px;
+  opacity: 1;
+  visibility: visible;
+  overflow-y: auto;
+  margin-top: 8px;
+}
+
+/* Collapsed: the hidden desc must contribute zero box — no padding
+   or margin may leak height while it is invisible */
+#page-card:not(:hover):not(:has(.card-rename-input)):not(:has(.page-desc-input)) #page-desc {
+  padding: 0;
+  margin: 0;
+}
+
+#page-desc:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+body.dark-mode #page-desc:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+#page-desc.empty {
+  color: var(--text-muted);
+}
+
+#page-card #page-desc:has(.page-desc-input) {
+  cursor: default;
+  padding: 0;
+  margin: 0;
+  overflow: visible;
+}
+
+#page-card #page-desc:has(.page-desc-input):hover {
+  background: none;
+}
+
+.page-desc-input {
+  width: 100%;
+  min-height: 64px;
+  max-height: 220px;
+  padding: 8px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  overflow-y: auto;
+  resize: none;
+}
+
+.page-desc-input:focus {
+  outline: none;
+}
+
+.page-desc-row {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  margin-top: 6px;
+}
+
 /* Bottom tab bar (pages), level with the date display */
 #tabs-bar {
   position: fixed;
@@ -1182,6 +1409,11 @@ body.dark-mode .tab:hover {
   color: #fff;
 }
 
+.tab.active:hover {
+  background: var(--accent-hover);
+  color: #fff;
+}
+
 /* Standalone straight drop marker between tabs */
 #tab-drop-marker {
   position: fixed;
@@ -1197,54 +1429,6 @@ body.dark-mode .tab:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 140px;
-}
-
-.tab-rename-input {
-  flex: 1;
-  min-width: 0;
-  width: 110px;
-  padding: 3px 10px;
-  border: 1px solid var(--accent);
-  border-radius: 8px;
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  font-family: inherit;
-  font-size: 13px;
-}
-
-.tab-rename-input:focus {
-  outline: none;
-}
-
-.tab.editing {
-  height: 30px;
-  padding: 0 6px;
-  gap: 6px;
-}
-
-.tab-rename-save {
-  width: 22px;
-  height: 22px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  border: none;
-  background: var(--accent);
-  color: #fff;
-  cursor: pointer;
-  transition: background var(--transition);
-}
-
-.tab-rename-save:hover {
-  background: var(--accent-hover);
-}
-
-.tab-rename-save svg {
-  width: 12px;
-  height: 12px;
-  display: block;
 }
 
 #tab-add {
