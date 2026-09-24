@@ -520,7 +520,8 @@ body.dark-mode #diff-close:hover {
   position: fixed;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%) scale(0.96);
+  opacity: 0;
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
   box-shadow: var(--shadow-xl);
@@ -530,6 +531,43 @@ body.dark-mode #diff-close:hover {
   max-height: 82vh;
   overflow: hidden;
   padding: 0;
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+}
+
+#details-modal.open {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+/* Staged entrance (total ~0.5s): title row, then description, then chat */
+.details-title-row,
+#details-desc,
+.details-chat {
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+#details-modal.open .details-title-row {
+  opacity: 1;
+  transform: none;
+  transition-delay: 0.12s;
+}
+
+#details-modal.open #details-desc {
+  opacity: 1;
+  transform: none;
+  transition-delay: 0.22s;
+}
+
+#details-modal.open .details-chat {
+  opacity: 1;
+  transform: none;
+  transition-delay: 0.32s;
 }
 
 .details-content {
@@ -613,7 +651,10 @@ body.dark-mode #details-close:hover {
   cursor: pointer;
   border-radius: 8px;
   padding: 4px 8px;
-  transition: background var(--transition);
+  transition:
+    background var(--transition),
+    opacity 0.2s ease,
+    transform 0.2s ease;
 }
 
 #details-title:not(.editing):hover,
@@ -940,6 +981,16 @@ body.dark-mode .chat-action-btn:hover {
   color: var(--text-muted);
   margin-top: 3px;
   padding-inline-start: 4px;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.15s ease,
+    visibility 0.15s ease;
+}
+
+.chat-item:hover .chat-date {
+  opacity: 1;
+  visibility: visible;
 }
 
 .details-input-row {

@@ -24,6 +24,7 @@ import {
   setupPages,
   renderPageTabs,
   setActivePage,
+  saveActiveView,
   DEFAULT_CONFIRM_TEXT,
 } from "./pages.js";
 import { savePage } from "./db.js";
@@ -178,6 +179,7 @@ function handlePan(e) {
 function endPan() {
   localStorage.setItem("canvasX", parseInt(dom.canvas.style.left) || 0);
   localStorage.setItem("canvasY", parseInt(dom.canvas.style.top) || 0);
+  saveActiveView(dom.canvas.style.left, dom.canvas.style.top);
   state.panData = null;
   document.removeEventListener("mousemove", handlePan);
   document.removeEventListener("mouseup", endPan);

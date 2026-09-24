@@ -7,7 +7,7 @@ import { state } from "./state.js";
 import { dom, positionFloating } from "./dom.js";
 import { debounce } from "./utils.js";
 import { getRenderedEl } from "./renderer.js";
-import { setActivePage } from "./pages.js";
+import { setActivePage, saveActiveView } from "./pages.js";
 
 /**
  * Opens the search modal, centered on the viewport, with previous results
@@ -109,6 +109,10 @@ export function focusNode(nodeId) {
   dom.canvas.style.top = `${window.innerHeight / 2 - centerY}px`;
   localStorage.setItem("canvasX", window.innerWidth / 2 - centerX);
   localStorage.setItem("canvasY", window.innerHeight / 2 - centerY);
+  saveActiveView(
+    window.innerWidth / 2 - centerX,
+    window.innerHeight / 2 - centerY,
+  );
   setTimeout(() => {
     dom.canvas.style.transition = "";
     const el = getRenderedEl(nodeId);

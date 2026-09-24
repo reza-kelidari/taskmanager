@@ -14,6 +14,7 @@ import { history } from "./history.js";
 import { renderNodes, getRenderedEl } from "./renderer.js";
 import { layoutTree } from "./layout.js";
 import { drawConnections } from "./connections.js";
+import { saveActiveView } from "./pages.js";
 
 /**
  * One vertical level; falls back to a safe default on legacy configs.
@@ -391,7 +392,7 @@ function maybeAutoPan(minX, minY, maxX, maxY) {
 
 /**
  * Moves the canvas origin to (`x`, `y`), optionally animated, and
- * persists the offset.
+ * persists the offset globally and into the active page.
  *
  * @param {number} x New canvas left (viewport space).
  * @param {number} y New canvas top (viewport space).
@@ -405,6 +406,7 @@ function panCanvas(x, y, withTransition = true) {
   dom.canvas.style.top = `${y}px`;
   localStorage.setItem("canvasX", x);
   localStorage.setItem("canvasY", y);
+  saveActiveView(x, y);
   if (withTransition) {
     setTimeout(() => {
       dom.canvas.style.transition = "";

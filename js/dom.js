@@ -60,6 +60,7 @@ export function hideAllMenus() {
 
 /**
  * Hides every modal dialog (input, note, confirm, search, diff, details).
+ * The details modal closes with its exit animation when available.
  * @returns {void}
  */
 export function hideAllModals() {
@@ -68,7 +69,13 @@ export function hideAllModals() {
   dom.confirmModal.classList.add("hidden");
   dom.searchModal.classList.add("hidden");
   if (dom.diffModal) dom.diffModal.classList.add("hidden");
-  if (dom.detailsModal) dom.detailsModal.classList.add("hidden");
+  if (dom.detailsModal) {
+    if (typeof window !== "undefined" && window.__closeDetailsModal) {
+      window.__closeDetailsModal();
+    } else {
+      dom.detailsModal.classList.add("hidden");
+    }
+  }
 }
 
 /**

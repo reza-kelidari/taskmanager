@@ -37,6 +37,10 @@ let editingIndex = -1;
 let infoEditing = null;
 /** Index of the note targeted by the right-click comment menu. */
 let menuIndex = -1;
+/** Pending animated-close timer; cleared when the modal reopens. */
+let closeTimer = null;
+/** Exit animation length (ms); matches the staged CSS delays. */
+const CLOSE_MS = 500;
 
 /**
  * Returns the task currently shown in the details modal, if any.
@@ -605,7 +609,8 @@ function saveDescEdit() {
 }
 
 /**
- * Opens the details modal for a task node.
+ * Opens the details modal for a task node with a staged entrance
+ * animation (window, then title/status, description, comments).
  *
  * @param {object} node Task node to display.
  * @returns {void}
@@ -619,7 +624,10 @@ export function showDetailsModal(node) {
     hideAllMenus();
     renderDetailsInfo(node);
     dom.hoverBox?.classList.add("hidden");
+    clearTimeout(closeTimer);
     dom.detailsModal.classList.remove("hidden");
+    void dom.detailsModal.offsetWidth;
+    dom.detailsModal.classList.add("open");
     renderDetailsComments(node);
     if (dom.detailsCommentInput) {
       dom.detailsCommentInput.value = "";
@@ -628,6 +636,27 @@ export function showDetailsModal(node) {
   } catch (error) {
     errorReporter.report(error, { context: "showDetailsModal" });
   }
+}
+
+/**
+ * Closes the details modal with its exit animation (~0.5s), then
+ * unmounts it. Reopening within the window cancels the pending hide.
+ * Registered as `window.__closeDetailsModal` for hideAllModals.
+ * @returns {void}
+ */
+export function closeDetailsModal() {
+  if (!dom.detailsModal || dom.detailsModal.classList.contains("hidden"))
+    return;
+  hideAllMenus();
+  editingIndex = -1;
+  state.detailsNodeId = null;
+  dom.detailsModal.classList.remove("open");
+  clearTimeout(closeTimer);
+  closeTimer = setTimeout(() => {
+    if (!dom.detailsModal.classList.contains("open")) {
+      dom.detailsModal.classList.add("hidden");
+    }
+  }, CLOSE_MS);
 }
 
 /**
@@ -676,19 +705,17 @@ function showCommentMenu(index, x, y) {
 }
 
 /**
- * Wires the details modal: close button, click-to-edit title/description,
- * send button, auto-growing composer (Enter sends, Shift+Enter inserts a
- * newline), note right-click menu and its items. Call once during
- * bootstrapping.
+ * Wires the details modal: close button (animated), click-to-edit
+ * title/description, send button, auto-growing composer (Enter sends,
+ * Shift+Enter inserts a newline), note right-click menu and its items.
+ * Registers `window.__closeDetailsModal` for hideAllModals. Call once
+ * during bootstrapping.
  * @returns {void}
  */
 export function setupDetailsModal() {
+  window.__closeDetailsModal = closeDetailsModal;
   document.getElementById("details-close")?.addEventListener("click", () => {
-    dom.detailsModal?.classList.add("hidden");
-    hideAllMenus();
-    editingIndex = -1;
-    infoEditing = null;
-    state.detailsNodeId = null;
+    closeDetailsModal();
   });
 
   document.querySelector(".details-info")?.addEventListener("click", (e) => {

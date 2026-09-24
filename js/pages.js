@@ -118,7 +118,17 @@ export async function ensurePages() {
     } catch (_) {
       /* storage unavailable */
     }
+    const cx = parseInt(dom.canvas.style.left);
+    const cy = parseInt(dom.canvas.style.top);
+    state.pages.forEach((p) => {
+      if (!Number.isFinite(p.viewX) || !Number.isFinite(p.viewY)) {
+        p.viewX = Number.isFinite(cx) ? cx : Math.round(window.innerWidth / 2);
+        p.viewY = Number.isFinite(cy) ? cy : Math.round(window.innerHeight / 2);
+        savePage(p);
+      }
+    });
     renderPageTabs();
+    restoreActiveView();
   } catch (error) {
     errorReporter.report(error, { context: "ensurePages" });
   }
@@ -137,7 +147,8 @@ export function updateEmptyState() {
 
 /**
  * Switches to a page: persists the choice, closes menus/modals,
- * re-renders the canvas and refreshes tabs and the empty state.
+ * restores the page's saved viewport, re-renders the canvas and
+ * refreshes tabs and the empty state.
  *
  * @param {string} id Page id.
  * @returns {void}
@@ -154,6 +165,7 @@ export function setActivePage(id) {
   hideAllModals();
   state.detailsNodeId = null;
   if (dom.hoverBox) dom.hoverBox.classList.add("hidden");
+  restoreActiveView();
   renderPageTabs();
   renderNodes();
   drawConnections();
@@ -161,8 +173,8 @@ export function setActivePage(id) {
 }
 
 /**
- * Creates a page and switches into it. Page creation touches no nodes,
- * so no history entry is recorded.
+ * Creates a page (starting at the viewport center) and switches into
+ * it. Page creation touches no nodes, so no history entry is recorded.
  *
  * @returns {Promise<object>} The new page.
  */
@@ -171,6 +183,8 @@ export async function createPage() {
     id: genPageId(),
     title: nextPageTitle(),
     createdAt: Date.now(),
+    viewX: Math.round(window.innerWidth / 2),
+    viewY: Math.round(window.innerHeight / 2),
   };
   state.pages.push(page);
   try {
@@ -200,10 +214,47 @@ async function persistPage(page) {
   }
 }
 
-/** Id of the page being dragged for reorder; null when idle. */
-let dragPageId = null;
-/** Drop target: `{id, after}` or `{append:true}`; null when none. */
-let dropTarget = null;
+/**
+ * Saves the canvas offset into the active page record (best-effort).
+ *
+ * @param {number|string} x Canvas left.
+ * @param {number|string} y Canvas top.
+ * @returns {void}
+ */
+export function saveActiveView(x, y) {
+  const page = state.pages.find(
+    (b) => String(b.id) === String(state.activePageId),
+  );
+  if (!page) return;
+  const nx = parseInt(x);
+  const ny = parseInt(y);
+  if (isNaN(nx) || isNaN(ny)) return;
+  page.viewX = nx;
+  page.viewY = ny;
+  persistPage(page);
+}
+
+/**
+ * Restores the active page's saved canvas offset (instant, no
+ * transition), falling back to the viewport center.
+ * @returns {void}
+ */
+export function restoreActiveView() {
+  const page = state.pages.find(
+    (b) => String(b.id) === String(state.activePageId),
+  );
+  const x =
+    page && Number.isFinite(page.viewX)
+      ? page.viewX
+      : Math.round(window.innerWidth / 2);
+  const y =
+    page && Number.isFinite(page.viewY)
+      ? page.viewY
+      : Math.round(window.innerHeight / 2);
+  dom.canvas.style.transition = "";
+  dom.canvas.style.left = `${x}px`;
+  dom.canvas.style.top = `${y}px`;
+}
 
 /**
  * Renames a page and persists it. Empty titles are rejected (false).
