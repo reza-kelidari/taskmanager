@@ -7,7 +7,7 @@
 import { state } from "./state.js";
 import { dom } from "./dom.js";
 import { CONFIG } from "./config.js";
-import { finite, isNodeHidden, isActivePageNode, nodeParentIds, showToast } from "./utils.js";
+import { finite, isNodeHidden, isActivePageNode, nodeParentIds, showToast, compareTitles } from "./utils.js";
 import { errorReporter } from "./error.js";
 import { saveNode } from "./db.js";
 import { history } from "./history.js";
@@ -71,7 +71,10 @@ export function scrubPositions(nodesList) {
  * Applies the automatic layout to all (non-filtered) nodes of the active
  * page.
  *
- * The layout always runs on the primary-parent forest. When the done-task
+ * The layout always runs on the primary-parent forest. Siblings and
+ * roots are placed top-to-bottom in Persian alphabetical order; the
+ * shortcut pattern's stacked nodes are ordered the same way (the middle
+ * task below the axis keeps its geometric slot). When the done-task
  * filter is active, completed tasks and fully-done non-root headers (see
  * {@link isHeaderAutoHidden}) are excluded, and nodes whose primary
  * parent is filtered out are temporarily re-attached to their nearest
@@ -127,7 +130,9 @@ export function autoArrange() {
     const oldPos = {};
     layoutNodes.forEach((n) => (oldPos[n.id] = { x: n.x, y: n.y }));
 
-    const roots = layoutNodes.filter((n) => !n.parent);
+    const roots = layoutNodes
+      .filter((n) => !n.parent)
+      .sort(compareTitles);
     if (roots.length === 0) return;
 
     let currentY = CONFIG.CANVAS_INITIAL_Y_OFFSET;
@@ -293,6 +298,7 @@ function applyShortcutAlignment(nodesList) {
       });
       if (shortcuts.length === 0) return;
 
+      shortcuts.sort(compareTitles);
       shortcuts.forEach((c) => handled.add(String(c.id)));
 
       const shortcutSubtree = new Set();

@@ -34,6 +34,9 @@ export const dom = {
   pageMenu: document.getElementById("page-menu"),
   moveMenu: document.getElementById("move-menu"),
   movePageList: document.getElementById("move-page-list"),
+  pagesModal: document.getElementById("pages-modal"),
+  pagesModalList: document.getElementById("pages-modal-list"),
+  pagesModalSearch: document.getElementById("pages-modal-search"),
   diffModal: document.getElementById("diff-modal"),
   filterActiveBtn: document.getElementById("tool-filter-active"),
   detailsModal: document.getElementById("details-modal"),
@@ -62,8 +65,9 @@ export function hideAllMenus() {
 }
 
 /**
- * Hides every modal dialog (input, note, confirm, search, diff, details).
- * The details modal closes with its exit animation when available.
+ * Hides every modal dialog (input, note, confirm, search, diff, details,
+ * pages list). The details modal closes with its exit animation when
+ * available.
  * @returns {void}
  */
 export function hideAllModals() {
@@ -72,6 +76,7 @@ export function hideAllModals() {
   dom.confirmModal.classList.add("hidden");
   dom.searchModal.classList.add("hidden");
   if (dom.diffModal) dom.diffModal.classList.add("hidden");
+  if (dom.pagesModal) dom.pagesModal.classList.add("hidden");
   if (dom.detailsModal) {
     if (typeof window !== "undefined" && window.__closeDetailsModal) {
       window.__closeDetailsModal();

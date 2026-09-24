@@ -288,20 +288,6 @@ export function clearThreadHighlight() {
  * ============================================================ */
 
 /**
- * Coalesces redraw requests into at most one per animation frame.
- * @returns {void}
- */
-export function requestDraw() {
-  if (!state.isDrawing) {
-    state.isDrawing = true;
-    requestAnimationFrame(() => {
-      drawConnections();
-      state.isDrawing = false;
-    });
-  }
-}
-
-/**
  * Repaints every connection thread of the active page on the SVG layer.
  *
  * - One thread per input (primary parent + every extra parent).

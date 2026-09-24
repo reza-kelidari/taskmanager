@@ -533,7 +533,7 @@ function startTitleEdit() {
   const input = document.createElement("input");
   input.className = "details-edit-input";
   input.value = node.title ?? "";
-  input.maxLength = 25;
+  input.maxLength = 30;
   input.setAttribute("aria-label", "ویرایش عنوان");
   row.appendChild(input);
   row.appendChild(buildCheckButton(saveTitleEdit));

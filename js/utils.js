@@ -153,23 +153,6 @@ export function getCurrentTime() {
   });
 }
 
-/**
- * Legacy single-parent ancestor check (primary-parent chain only).
- * Prefer {@link isAncestorMulti} for graph-aware checks.
- *
- * @param {string} potentialAncestorId Candidate ancestor id.
- * @param {string} nodeId Start node id.
- * @returns {boolean} True if the candidate is an ancestor of the start node.
- */
-export function isAncestor(potentialAncestorId, nodeId) {
-  let current = state.nodes.find((n) => n.id == nodeId);
-  while (current && current.parent) {
-    if (current.parent === potentialAncestorId) return true;
-    current = state.nodes.find((n) => n.id == current.parent);
-  }
-  return false;
-}
-
 /* ============================================================
  * Multi-input graph predicates
  * ============================================================ */
@@ -354,6 +337,17 @@ export function isHeaderAutoHidden(node) {
 }
 
 /**
+ * Persian-aware title comparison for layout ordering.
+ *
+ * @param {object} a First node.
+ * @param {object} b Second node.
+ * @returns {number} Negative/zero/positive sort order.
+ */
+export function compareTitles(a, b) {
+  return String(a?.title ?? "").localeCompare(String(b?.title ?? ""), "fa");
+}
+
+/**
  * Returns true while the done-task filter is active and the node should be
  * removed from the canvas:
  * - completed tasks are always hidden;
@@ -383,7 +377,8 @@ export function shouldShowHoverBox() {
     !dom.notesMenu.classList.contains("hidden") ||
     !dom.noteModal.classList.contains("hidden") ||
     !dom.confirmModal.classList.contains("hidden") ||
-    (dom.detailsModal && !dom.detailsModal.classList.contains("hidden"))
+    (dom.detailsModal && !dom.detailsModal.classList.contains("hidden")) ||
+    (dom.pagesModal && !dom.pagesModal.classList.contains("hidden"))
   );
 }
 

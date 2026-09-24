@@ -1,12 +1,14 @@
 /**
  * @module layout
  * @description Recursive tree layout. Children are placed one level to the
- * left of their parent; each parent is vertically centered on the *actual
- * rendered position* of its first child so the entire first-child chain
- * shares one center axis regardless of mixed node heights.
+ * left of their parent in Persian alphabetical order; each parent is
+ * vertically centered on the *actual rendered position* of its first
+ * child so the entire first-child chain shares one center axis
+ * regardless of mixed node heights.
  */
 import { state } from "./state.js";
 import { CONFIG } from "./config.js";
+import { compareTitles } from "./utils.js";
 import { getRenderedEl } from "./renderer.js";
 
 /**
@@ -31,7 +33,9 @@ export function layoutTree(node, x, y) {
   const h = el ? el.offsetHeight : CONFIG.FALLBACK_HEIGHT;
   node.x = Math.round(x);
 
-  const children = state.nodes.filter((n) => n.parent === node.id);
+  const children = state.nodes
+    .filter((n) => n.parent === node.id)
+    .sort(compareTitles);
 
   if (children.length === 0) {
     node.y = Math.round(y);

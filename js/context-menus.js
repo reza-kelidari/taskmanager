@@ -98,14 +98,14 @@ export function setupContextMenus(actions) {
         suspendItem.innerText = nodeData.suspended ? "تعلیق‌نشده" : "تعلیق‌شده";
         notesItem.style.display = "none";
         editItem.style.display = "none";
-        moveItem.style.display = state.pages.length > 1 ? "flex" : "none";
+        moveItem.style.display = "flex";
       } else {
         toggleItem.style.display = "none";
         cancelItem.style.display = "none";
         suspendItem.style.display = "none";
         notesItem.style.display = "none";
         editItem.style.display = "flex";
-        moveItem.style.display = state.pages.length > 1 ? "flex" : "none";
+        moveItem.style.display = "flex";
       }
       positionFloating(dom.elementMenu, e.clientX, e.clientY);
     } else if (e.target.closest("#canvas-wrapper")) {
@@ -124,8 +124,10 @@ export function setupContextMenus(actions) {
   /**
    * Dismiss every menu/modal on an outside press. The history panel,
    * modal contents, #page-menu and #details-comment-menu (both carry
-   * the .context-menu class) are exempt so their own click handling
-   * survives. Right-clicks never dismiss the open task details modal.
+   * the .context-menu class) and #pages-modal are exempt so their own
+   * click handling survives (hiding #pages-modal on mousedown would
+   * swallow the click that follows it). Right-clicks never dismiss
+   * the open task details modal.
    */
   document.addEventListener("mousedown", (e) => {
     if (
@@ -138,6 +140,7 @@ export function setupContextMenus(actions) {
       !e.target.closest(".context-menu") &&
       !e.target.closest(".history-panel") &&
       !e.target.closest(".modal-content") &&
+      !e.target.closest("#pages-modal") &&
       !e.target.closest("#tool-more")
     ) {
       hideAllMenus();

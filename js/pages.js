@@ -158,6 +158,7 @@ export async function ensurePages() {
     renderPageTabs();
     restoreActiveView();
     updatePageCard();
+    scrollActiveTabIntoView();
   } catch (error) {
     errorReporter.report(error, { context: "ensurePages" });
   }
@@ -262,6 +263,18 @@ export function updateEmptyState() {
 }
 
 /**
+ * Scrolls the tab bar so the active tab is visible (used after boot
+ * restore and programmatic switches).
+ * @returns {void}
+ */
+export function scrollActiveTabIntoView() {
+  document
+    .getElementById("tabs-list")
+    ?.querySelector(".tab.active")
+    ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+}
+
+/**
  * Switches to a page: persists the choice, closes menus/modals,
  * restores the page's saved viewport, re-renders the canvas and
  * refreshes tabs and the empty state.
@@ -283,6 +296,7 @@ export function setActivePage(id) {
   if (dom.hoverBox) dom.hoverBox.classList.add("hidden");
   restoreActiveView();
   renderPageTabs();
+  scrollActiveTabIntoView();
   renderNodes();
   drawConnections();
   updateEmptyState();
@@ -556,7 +570,7 @@ function startCardRename() {
   const input = document.createElement("input");
   input.className = "card-rename-input";
   input.value = page.title;
-  input.maxLength = 25;
+  input.maxLength = 30;
   input.setAttribute("aria-label", "ویرایش عنوان صفحه");
   const save = document.createElement("button");
   save.className = "card-rename-save";
@@ -608,7 +622,8 @@ function startCardRename() {
 
 /**
  * Rebuilds the tab bar from `state.pages`. Tabs are draggable for
- * reorder; clicking a tab switches to it.
+ * reorder; clicking a tab switches to it. The list button appears only
+ * past 4 pages.
  * @returns {void}
  */
 export function renderPageTabs() {
@@ -634,6 +649,100 @@ export function renderPageTabs() {
     });
     list.appendChild(tab);
   });
+  document
+    .getElementById("tab-list-btn")
+    ?.classList.toggle("hidden", state.pages.length <= 4);
+}
+
+/**
+ * Visible items of the pages modal, in order.
+ * @returns {Array<HTMLElement>}
+ */
+function visibleModalItems() {
+  if (!dom.pagesModalList) return [];
+  return [...dom.pagesModalList.querySelectorAll(".pages-modal-item")];
+}
+
+/**
+ * Moves keyboard focus to a modal item (roving tabindex).
+ *
+ * @param {HTMLElement|null} item Item to focus.
+ * @returns {void}
+ */
+function focusModalItem(item) {
+  if (!item) return;
+  visibleModalItems().forEach((i) => {
+    i.tabIndex = -1;
+  });
+  item.tabIndex = 0;
+  item.focus();
+}
+
+/**
+ * Opens the vertical pages list modal (tab-bar order, active marked),
+ * with a live title filter and the search box ready for typing.
+ * Keyboard navigation starts with ArrowDown from the search box.
+ * @returns {void}
+ */
+export function openPagesModal() {
+  if (!dom.pagesModal || !dom.pagesModalList) return;
+  hideAllMenus();
+  if (dom.pagesModalSearch) dom.pagesModalSearch.value = "";
+  renderPagesModalList("");
+  dom.pagesModal.classList.remove("hidden");
+  dom.pagesModalSearch?.focus();
+}
+
+/**
+ * Rebuilds the modal list, filtered by title substring.
+ *
+ * @param {string} query Raw filter text.
+ * @returns {void}
+ */
+function renderPagesModalList(query) {
+  const q = (query ?? "").trim().toLowerCase();
+  dom.pagesModalList.innerHTML = "";
+  const shown = state.pages.filter((page) =>
+    page.title.toLowerCase().includes(q),
+  );
+  if (shown.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "pages-modal-empty";
+    empty.textContent = "صفحه‌ای یافت نشد";
+    dom.pagesModalList.appendChild(empty);
+    return;
+  }
+  shown.forEach((page) => {
+    const item = document.createElement("div");
+    item.className = "pages-modal-item";
+    item.setAttribute("role", "option");
+    item.tabIndex = -1;
+    item.dataset.id = page.id;
+    item.textContent = page.title;
+    if (String(page.id) === String(state.activePageId)) {
+      item.classList.add("active");
+    }
+    item.addEventListener("click", (e) => {
+      e.stopPropagation();
+      dom.pagesModal.classList.add("hidden");
+      setActivePage(page.id);
+    });
+    item.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        item.click();
+      } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        const items = visibleModalItems();
+        const i = items.indexOf(item);
+        const next =
+          e.key === "ArrowDown" ? items[i + 1] : (items[i - 1] ?? "search");
+        if (next === "search") dom.pagesModalSearch?.focus();
+        else focusModalItem(next ?? null);
+      }
+    });
+    dom.pagesModalList.appendChild(item);
+  });
 }
 
 /**
@@ -648,6 +757,24 @@ export function setupPages() {
       e.stopPropagation();
       createPage();
     });
+  document
+    .getElementById("tab-list-btn")
+    ?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openPagesModal();
+    });
+  dom.pagesModal?.addEventListener("mousedown", (e) => {
+    if (e.target === dom.pagesModal) dom.pagesModal.classList.add("hidden");
+  });
+  dom.pagesModalSearch?.addEventListener("input", () =>
+    renderPagesModalList(dom.pagesModalSearch.value),
+  );
+  dom.pagesModalSearch?.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      focusModalItem(visibleModalItems()[0] ?? null);
+    }
+  });
   // Refresh card stats on every hover so counts are always current.
   document
     .getElementById("page-card")

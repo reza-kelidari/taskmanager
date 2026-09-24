@@ -14,7 +14,7 @@ import { nodeParentIds } from "./utils.js";
 import { saveNode, removeParentInput } from "./db.js";
 import { history } from "./history.js";
 import { autoArrange } from "./arrange.js";
-import { setActivePage, DEFAULT_CONFIRM_TEXT } from "./pages.js";
+import { setActivePage, createPage, DEFAULT_CONFIRM_TEXT } from "./pages.js";
 import { errorReporter } from "./error.js";
 
 /** Id of the node chosen for moving (set when the move menu opens). */
@@ -146,8 +146,112 @@ export async function moveNodeToPage(root, targetId) {
 }
 
 /**
- * Opens the move menu at (`x`, `y`): a back item plus the other pages
- * in tab-bar order.
+ * Visible page items of the move menu, in order.
+ * @returns {Array<HTMLElement>}
+ */
+function moveListItems() {
+  if (!dom.movePageList) return [];
+  return [...dom.movePageList.querySelectorAll(".menu-item")];
+}
+
+/**
+ * Moves keyboard focus to a move-menu item (roving tabindex).
+ *
+ * @param {HTMLElement|null} item Item to focus.
+ * @returns {void}
+ */
+function focusMoveItem(item) {
+  if (!item) return;
+  moveListItems().forEach((i) => {
+    i.tabIndex = -1;
+  });
+  item.tabIndex = 0;
+  item.focus();
+}
+
+/**
+ * Rebuilds the move menu's page list (other pages in tab-bar order),
+ * filtered by title substring.
+ *
+ * @param {object} node Node to move.
+ * @param {string} query Raw filter text.
+ * @returns {void}
+ */
+function renderMoveList(node, query) {
+  const q = (query ?? "").trim().toLowerCase();
+  dom.movePageList.innerHTML = "";
+  const shown = state.pages.filter(
+    (b) =>
+      String(b.id) !== String(node.pageId) &&
+      b.title.toLowerCase().includes(q),
+  );
+  if (shown.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "move-page-empty";
+    empty.textContent = "صفحه‌ای یافت نشد";
+    dom.movePageList.appendChild(empty);
+    return;
+  }
+  shown.forEach((page) => {
+    const item = document.createElement("div");
+    item.className = "menu-item";
+    item.setAttribute("role", "menuitem");
+    item.tabIndex = -1;
+    item.textContent = page.title;
+    item.addEventListener("click", (e) => {
+      e.stopPropagation();
+      dom.moveMenu.classList.add("hidden");
+      moveNodeToPage(node, page.id);
+    });
+    item.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        item.click();
+      } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        const items = moveListItems();
+        const i = items.indexOf(item);
+        const next =
+          e.key === "ArrowDown" ? items[i + 1] : (items[i - 1] ?? "search");
+        if (next === "search") document.getElementById("move-search")?.focus();
+        else focusMoveItem(next ?? null);
+      }
+    });
+    dom.movePageList.appendChild(item);
+  });
+}
+
+/**
+ * Switches the move menu between options mode (icon row) and search
+ * mode (back arrow + field).
+ *
+ * @param {boolean} searching True for search mode.
+ * @returns {void}
+ */
+function setMoveSearchMode(searching) {
+  dom.moveMenu
+    ?.querySelector(".move-menu-top")
+    ?.classList.toggle("hidden", searching);
+  dom.moveMenu
+    ?.querySelector(".move-search-row")
+    ?.classList.toggle("hidden", !searching);
+  const search = document.getElementById("move-search");
+  if (search) {
+    if (searching) {
+      search.value = "";
+      search.focus();
+    }
+    const node =
+      movingNodeId != null
+        ? state.nodes.find((n) => String(n.id) === String(movingNodeId))
+        : null;
+    if (node) renderMoveList(node, searching ? search.value : "");
+  }
+}
+
+/**
+ * Opens the move menu at (`x`, `y`): icon row (back, new page, search
+ * toggle) and the other pages in tab-bar order.
  *
  * @param {number} x Viewport X anchor.
  * @param {number} y Viewport Y anchor.
@@ -158,44 +262,60 @@ export function showMoveMenu(x, y, node) {
   if (!node || !dom.moveMenu || !dom.movePageList) return;
   movingNodeId = node.id;
   hideAllMenus();
-  dom.movePageList.innerHTML = "";
-  state.pages
-    .filter((b) => String(b.id) !== String(node.pageId))
-    .forEach((page) => {
-      const item = document.createElement("div");
-      item.className = "menu-item";
-      item.setAttribute("role", "menuitem");
-      item.tabIndex = 0;
-      item.textContent = page.title;
-      item.addEventListener("click", (e) => {
-        e.stopPropagation();
-        dom.moveMenu.classList.add("hidden");
-        moveNodeToPage(node, page.id);
-      });
-      item.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          item.click();
-        }
-      });
-      dom.movePageList.appendChild(item);
-    });
+  setMoveSearchMode(false);
   positionFloating(dom.moveMenu, x, y);
 }
 
 /**
- * Wires the move menu's back item (returns to the element menu).
- * Call once during bootstrapping.
+ * Wires the move menu's icon row (back, new page, search toggle) and
+ * the live search field. Call once during bootstrapping.
  * @returns {void}
  */
 export function setupMoveMenu() {
-  dom.moveMenu
-    ?.querySelector('[data-action="move-back"]')
-    ?.addEventListener("click", (e) => {
+  const wireItem = (action, handler) => {
+    const item = dom.moveMenu?.querySelector(`[data-action="${action}"]`);
+    item?.addEventListener("click", (e) => {
       e.stopPropagation();
-      const x = parseInt(dom.moveMenu.style.left);
-      const y = parseInt(dom.moveMenu.style.top);
-      dom.moveMenu.classList.add("hidden");
-      if (state.activeEl) positionFloating(dom.elementMenu, x, y);
+      handler();
     });
+    item?.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        item.click();
+      }
+    });
+  };
+  wireItem("move-back", () => {
+    const x = parseInt(dom.moveMenu.style.left);
+    const y = parseInt(dom.moveMenu.style.top);
+    dom.moveMenu.classList.add("hidden");
+    if (state.activeEl) positionFloating(dom.elementMenu, x, y);
+  });
+  wireItem("new-page", async () => {
+    if (movingNodeId == null) return;
+    const node = state.nodes.find((n) => String(n.id) === String(movingNodeId));
+    if (!node) return;
+    dom.moveMenu.classList.add("hidden");
+    const page = await createPage();
+    moveNodeToPage(node, page.id);
+  });
+  wireItem("move-search-toggle", () => {
+    setMoveSearchMode(true);
+  });
+  wireItem("move-search-back", () => {
+    setMoveSearchMode(false);
+  });
+  document.getElementById("move-search")?.addEventListener("input", (e) => {
+    const node =
+      movingNodeId != null
+        ? state.nodes.find((n) => String(n.id) === String(movingNodeId))
+        : null;
+    if (node) renderMoveList(node, e.target.value);
+  });
+  document.getElementById("move-search")?.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      focusMoveItem(moveListItems()[0] ?? null);
+    }
+  });
 }

@@ -13,7 +13,6 @@
  * @property {string|null}      activePageId       Id of the currently visible page.
  * @property {HTMLElement|null} activeEl            DOM element of the node targeted by the most recent right-click.
  * @property {object|null}      dragData            Active drag session; shape depends on `type` (`move-node`, `new-connection`, `move-connection`). Null when idle.
- * @property {boolean}          isDrawing           Guard coalescing connection redraws into one per animation frame.
  * @property {string|null}      editingNodeId       Id of the node being created/edited in the input modal, null otherwise.
  * @property {string|null}      currentNoteNodeId   Id of the node whose notes menu is open.
  * @property {string|null}      detailsNodeId       Id of the task shown in the details modal, null when closed.
@@ -30,7 +29,6 @@ export const state = {
   activePageId: null,
   activeEl: null,
   dragData: null,
-  isDrawing: false,
   editingNodeId: null,
   currentNoteNodeId: null,
   detailsNodeId: null,

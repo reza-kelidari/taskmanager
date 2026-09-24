@@ -18,6 +18,7 @@
 import { dom, hideAllMenus, hideAllModals } from "./dom.js";
 import { state } from "./state.js";
 import { showSearchModal } from "./search.js";
+import { openPagesModal } from "./pages.js";
 import { toggleFilter } from "./toolbar-menus.js";
 
 /**
@@ -61,6 +62,11 @@ export function setupKeyboardShortcuts(actions) {
     if ((e.ctrlKey || e.metaKey) && key === "f") {
       e.preventDefault();
       showSearchModal();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && key === "l") {
+      e.preventDefault();
+      openPagesModal();
       return;
     }
     if ((e.ctrlKey || e.metaKey) && key === "e") {

@@ -438,8 +438,46 @@
     </div>
 
     <div id="tabs-bar" role="tablist" aria-label="صفحه‌ها">
+      <button id="tab-list-btn" class="hidden" title="لیست صفحه‌ها" aria-label="لیست صفحه‌ها">
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <line x1="8" y1="6" x2="21" y2="6"></line>
+          <line x1="8" y1="12" x2="21" y2="12"></line>
+          <line x1="8" y1="18" x2="21" y2="18"></line>
+          <line x1="3" y1="6" x2="3.01" y2="6"></line>
+          <line x1="3" y1="12" x2="3.01" y2="12"></line>
+          <line x1="3" y1="18" x2="3.01" y2="18"></line>
+        </svg>
+      </button>
       <div id="tabs-list"></div>
       <button id="tab-add" title="صفحه جدید" aria-label="صفحه جدید">+</button>
+    </div>
+
+    <div
+      id="pages-modal"
+      class="hidden"
+      role="dialog"
+      aria-label="لیست صفحه‌ها"
+    >
+      <div class="pages-modal-box">
+        <div class="pages-modal-title">صفحه‌ها</div>
+        <input
+          id="pages-modal-search"
+          placeholder="جستجوی صفحه…"
+          aria-label="جستجوی صفحه"
+          autocomplete="off"
+        />
+        <div id="pages-modal-list"></div>
+      </div>
     </div>
 
     <div
@@ -464,13 +502,99 @@
       role="menu"
       aria-label="انتقال به صفحه"
     >
-      <div
-        class="menu-item"
-        data-action="move-back"
-        role="menuitem"
-        tabindex="0"
-      >
-        بازگشت
+      <div class="move-menu-top">
+        <button
+          class="move-icon-btn"
+          data-action="move-back"
+          title="بازگشت"
+          aria-label="بازگشت"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </button>
+        <button
+          class="move-icon-btn"
+          data-action="new-page"
+          title="صفحه جدید"
+          aria-label="صفحه جدید"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </button>
+        <button
+          class="move-icon-btn"
+          data-action="move-search-toggle"
+          title="جستجو"
+          aria-label="جستجو در صفحه‌ها"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="move-search-row hidden">
+        <button
+          class="move-icon-btn move-search-back"
+          data-action="move-search-back"
+          title="بازگشت"
+          aria-label="بازگشت به منو"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </button>
+        <input
+          id="move-search"
+          placeholder="جستجوی صفحه…"
+          aria-label="جستجوی صفحه"
+          autocomplete="off"
+        />
       </div>
       <div id="move-page-list"></div>
     </div>
@@ -603,8 +727,8 @@
         <input
           type="text"
           id="input-title"
-          placeholder="عنوان (حداکثر ۲۵ کاراکتر)"
-          maxlength="25"
+          placeholder="عنوان (حداکثر ۳۰ کاراکتر)"
+          maxlength="30"
           aria-label="عنوان"
         />
         <textarea

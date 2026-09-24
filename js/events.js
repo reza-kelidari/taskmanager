@@ -155,7 +155,7 @@ export function setupEvents(actions) {
   dom.fileImport.addEventListener("change", (e) => {
     const file = e.target.files[0];
     if (file) {
-      importData(file, actions.renderNodes);
+      importData(file);
       e.target.value = "";
     }
   });
@@ -195,10 +195,9 @@ function endPan() {
  * back to the first one. Older payloads get a single fresh page.
  *
  * @param {File} file Selected JSON file.
- * @param {Function} renderNodesFn Render callback.
  * @returns {void}
  */
-function importData(file, renderNodesFn) {
+function importData(file) {
   const reader = new FileReader();
   reader.onload = (e) => {
     try {
