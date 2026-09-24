@@ -1,7 +1,26 @@
+/**
+ * @module utils
+ * @description Shared, dependency-light helpers: toasts, Shamsi dates,
+ * graph predicates (multi-input aware), done-filter visibility, and
+ * localStorage-backed drafts for text fields.
+ */
 import { CONFIG } from "./config.js";
 import { state } from "./state.js";
 import { dom } from "./dom.js";
 
+/**
+ * Returns true for any finite number.
+ * @param {*} v Value to test.
+ * @returns {boolean}
+ */
+export const finite = (v) => Number.isFinite(v);
+
+/**
+ * Escapes a value for safe interpolation into HTML markup.
+ *
+ * @param {*} text Raw value (null/undefined become empty string).
+ * @returns {string} HTML-escaped representation.
+ */
 export function escapeHtml(text) {
   if (text === null || text === undefined) return "";
   const div = document.createElement("div");
@@ -9,6 +28,14 @@ export function escapeHtml(text) {
   return div.innerHTML;
 }
 
+/**
+ * Shows a dismissible toast notification that auto-expires after
+ * {@link CONFIG.TOAST_DURATION} unless paused by hovering the stack.
+ *
+ * @param {string} message Text to display.
+ * @param {("info"|"success"|"warning"|"error")} [type="info"] Visual style.
+ * @returns {void}
+ */
 export function showToast(message, type = "info") {
   const toastEl = document.createElement("div");
   toastEl.className = `toast toast-${type}`;
@@ -40,6 +67,13 @@ export function showToast(message, type = "info") {
   state.toastTimers.push(timerObj);
 }
 
+/**
+ * Gracefully removes a toast: cancels its timer, detaches it from the
+ * bookkeeping list and plays the exit transition before DOM removal.
+ *
+ * @param {HTMLElement} toastEl Toast element (may already be detached).
+ * @returns {void}
+ */
 export function removeToast(toastEl) {
   if (!toastEl || !toastEl.parentNode) return;
   const timerObj = toastEl._timerObj;
@@ -54,6 +88,10 @@ export function removeToast(toastEl) {
   }, 300);
 }
 
+/**
+ * Pauses every active toast, freezing the remaining lifetime of each.
+ * @returns {void}
+ */
 export function pauseAllToasts() {
   state.isToastPaused = true;
   state.toastTimers.forEach((t) => {
@@ -63,6 +101,10 @@ export function pauseAllToasts() {
   });
 }
 
+/**
+ * Resumes every paused toast with a freshly scheduled timeout.
+ * @returns {void}
+ */
 export function resumeAllToasts() {
   state.isToastPaused = false;
   state.toastTimers.forEach((t) => {
@@ -71,6 +113,13 @@ export function resumeAllToasts() {
   });
 }
 
+/**
+ * Creates a debounced wrapper around `fn`.
+ *
+ * @param {Function} func Function to debounce.
+ * @param {number} [wait=CONFIG.DEBOUNCE_DELAY] Delay in milliseconds.
+ * @returns {Function} Debounced function.
+ */
 export function debounce(func, wait = CONFIG.DEBOUNCE_DELAY) {
   let timeout;
   return function (...args) {
@@ -79,6 +128,10 @@ export function debounce(func, wait = CONFIG.DEBOUNCE_DELAY) {
   };
 }
 
+/**
+ * Returns today's date in the Persian (Shamsi) calendar.
+ * @returns {string} e.g. "دوشنبه، خرداد ۱۰".
+ */
 export function getShamsiDate() {
   return new Date().toLocaleDateString("fa-IR", {
     weekday: "long",
@@ -87,6 +140,10 @@ export function getShamsiDate() {
   });
 }
 
+/**
+ * Returns the current time of day in 24-hour Persian format.
+ * @returns {string} e.g. "۱۴:۰۵".
+ */
 export function getCurrentTime() {
   return new Date().toLocaleTimeString("fa-IR", {
     hour: "2-digit",
@@ -95,6 +152,14 @@ export function getCurrentTime() {
   });
 }
 
+/**
+ * Legacy single-parent ancestor check (primary-parent chain only).
+ * Prefer {@link isAncestorMulti} for graph-aware checks.
+ *
+ * @param {string} potentialAncestorId Candidate ancestor id.
+ * @param {string} nodeId Start node id.
+ * @returns {boolean} True if the candidate is an ancestor of the start node.
+ */
 export function isAncestor(potentialAncestorId, nodeId) {
   let current = state.nodes.find((n) => n.id == nodeId);
   while (current && current.parent) {
@@ -104,16 +169,125 @@ export function isAncestor(potentialAncestorId, nodeId) {
   return false;
 }
 
-export function canConnect(sourceNode, targetNode) {
+/* ============================================================
+ * Multi-input graph predicates
+ * ============================================================ */
+
+/**
+ * Returns all input (parent) ids of a node: the primary parent first,
+ * followed by every extra parent. The first input a node ever receives
+ * becomes its primary parent (layout-defining); later inputs are stored
+ * in `extraParents` and are visual threads only.
+ *
+ * @param {object} node Node to inspect.
+ * @returns {Array<string>} Input ids (primary first). Empty for roots.
+ */
+export function nodeParentIds(node) {
+  if (!node) return [];
+  const ids = [];
+  if (node.parent !== null && node.parent !== undefined) ids.push(node.parent);
+  if (Array.isArray(node.extraParents)) ids.push(...node.extraParents);
+  return ids;
+}
+
+/**
+ * Duplicate-connection check: whether `node` already has an input coming
+ * from `sourceId`.
+ *
+ * @param {object} node Receiving node.
+ * @param {string} sourceId Candidate source id.
+ * @returns {boolean}
+ */
+export function hasInputFrom(node, sourceId) {
+  return nodeParentIds(node).some((id) => String(id) === String(sourceId));
+}
+
+/**
+ * Cycle-safe ancestor check across the full multi-input graph: performs a
+ * BFS upward through every input (primary and extra) of each visited node.
+ *
+ * @param {string} potentialAncestorId Candidate ancestor id.
+ * @param {string} startNodeId Start node id.
+ * @returns {boolean} True if the candidate is reachable upward from start.
+ */
+export function isAncestorMulti(potentialAncestorId, startNodeId) {
+  const queue = [startNodeId];
+  const visited = new Set();
+  while (queue.length) {
+    const key = String(queue.shift());
+    if (visited.has(key)) continue;
+    visited.add(key);
+    const n = state.nodes.find((x) => String(x.id) === key);
+    if (!n) continue;
+    for (const p of nodeParentIds(n)) {
+      if (String(p) === String(potentialAncestorId)) return true;
+      queue.push(p);
+    }
+  }
+  return false;
+}
+
+/**
+ * Validates a connection ignoring whether it already exists. Used when a
+ * thread is being replaced in place.
+ *
+ * Rules:
+ * - No self-connection.
+ * - No cycle: the target (input receiver) must not be an ancestor of the
+ *   source. Connecting a source to its own descendant IS allowed — that is
+ *   the shortcut thread (A > C alongside A > B > C); since the target is
+ *   already a descendant of the source, no cycle can be created.
+ * - Type compatibility: a header may feed anything; a task may only feed
+ *   another task.
+ *
+ * @param {object} sourceNode Feeding node.
+ * @param {object} targetNode Receiving node.
+ * @returns {boolean}
+ */
+export function canConnectRaw(sourceNode, targetNode) {
   if (!sourceNode || !targetNode) return false;
-  if (sourceNode.id === targetNode.id) return false;
-  if (isAncestor(targetNode.id, sourceNode.id)) return false;
-  if (isAncestor(sourceNode.id, targetNode.id)) return false;
+  if (String(sourceNode.id) === String(targetNode.id)) return false;
+  if (isAncestorMulti(targetNode.id, sourceNode.id)) return false;
   if (sourceNode.type === "header") return true;
   if (sourceNode.type === "task") return targetNode.type === "task";
   return false;
 }
 
+/**
+ * Full connection validation: {@link canConnectRaw} plus the
+ * duplicate-input check ({@link hasInputFrom}).
+ *
+ * @param {object} sourceNode Feeding node.
+ * @param {object} targetNode Receiving node.
+ * @returns {boolean}
+ */
+export function canConnect(sourceNode, targetNode) {
+  return (
+    canConnectRaw(sourceNode, targetNode) &&
+    !hasInputFrom(targetNode, sourceNode ? sourceNode.id : null)
+  );
+}
+
+/**
+ * Returns true while the done-task filter is active and the node is a
+ * completed task. Such nodes are fully removed from the canvas; layout,
+ * hit-testing and rendering must all skip them.
+ *
+ * @param {object} node Node to test.
+ * @returns {boolean}
+ */
+export function isNodeHidden(node) {
+  return (
+    document.body.classList.contains("filter-active") &&
+    node.type === "task" &&
+    !!node.done
+  );
+}
+
+/**
+ * Whether any menu/modal is open that should suppress the node hover box.
+ * @returns {boolean}
+ */
 export function shouldShowHoverBox() {
   return (
     !dom.elementMenu.classList.contains("hidden") ||
@@ -124,13 +298,33 @@ export function shouldShowHoverBox() {
   );
 }
 
-/** Draft persistence for text fields (survives refresh / accidental close) */
+/* ============================================================
+ * Draft persistence for text fields
+ * (survives refresh / accidental modal close)
+ * ============================================================ */
+
+/**
+ * Persists a draft payload under `draft_<key>` in localStorage.
+ * Best-effort: storage failures are swallowed.
+ *
+ * @param {string} key Draft key.
+ * @param {object} data JSON-serializable payload.
+ * @returns {void}
+ */
 export function saveDraft(key, data) {
   try {
     localStorage.setItem(`draft_${key}`, JSON.stringify(data));
-  } catch (_) {}
+  } catch (_) {
+    /* storage unavailable */
+  }
 }
 
+/**
+ * Loads a previously saved draft.
+ *
+ * @param {string} key Draft key.
+ * @returns {object|null} Parsed payload, or null when absent/corrupt.
+ */
 export function loadDraft(key) {
   try {
     const raw = localStorage.getItem(`draft_${key}`);
@@ -140,8 +334,16 @@ export function loadDraft(key) {
   }
 }
 
+/**
+ * Removes a draft (typically after it has been consumed by a save).
+ *
+ * @param {string} key Draft key.
+ * @returns {void}
+ */
 export function clearDraft(key) {
   try {
     localStorage.removeItem(`draft_${key}`);
-  } catch (_) {}
+  } catch (_) {
+    /* storage unavailable */
+  }
 }

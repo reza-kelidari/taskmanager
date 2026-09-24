@@ -1,8 +1,18 @@
+/**
+ * @module search
+ * @description Title/description/notes search modal with click-to-focus
+ * navigation.
+ */
 import { state } from "./state.js";
 import { dom, positionFloating } from "./dom.js";
 import { debounce } from "./utils.js";
 import { getRenderedEl } from "./renderer.js";
 
+/**
+ * Opens the search modal, centered on the viewport, with previous results
+ * cleared.
+ * @returns {void}
+ */
 export function showSearchModal() {
   dom.searchModal.classList.remove("hidden");
   dom.searchInput.value = "";
@@ -15,6 +25,13 @@ export function showSearchModal() {
   );
 }
 
+/**
+ * Renders the result list for a query. Matches titles, descriptions and
+ * note texts (case-insensitive). Each result focuses its node on click.
+ *
+ * @param {string} query Raw input value.
+ * @returns {void}
+ */
 export function performSearch(query) {
   dom.searchResults.innerHTML = "";
   if (!query.trim()) return;
@@ -60,6 +77,13 @@ export function performSearch(query) {
   });
 }
 
+/**
+ * Pans the canvas so the node is centered on the viewport and plays the
+ * highlight pulse on it.
+ *
+ * @param {string} nodeId Node id to focus.
+ * @returns {void}
+ */
 export function focusNode(nodeId) {
   const node = state.nodes.find((n) => n.id === nodeId);
   if (!node) return;
@@ -80,4 +104,5 @@ export function focusNode(nodeId) {
   }, 350);
 }
 
+/** Debounced search input handler. */
 export const debouncedSearch = debounce((e) => performSearch(e.target.value));

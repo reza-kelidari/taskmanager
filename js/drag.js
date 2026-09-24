@@ -1,176 +1,72 @@
+/**
+ * @module drag
+ * @description Pointer interactions: node dragging, connection dragging
+ * (new threads, thread replacement and detachment), delegated thread
+ * grabbing on the SVG layer, and post-drag overlap resolution.
+ */
 import { state } from "./state.js";
 import { dom } from "./dom.js";
 import { CONFIG } from "./config.js";
-import { canConnect, showToast } from "./utils.js";
+import { canConnect, canConnectRaw, isNodeHidden, showToast } from "./utils.js";
 import { getRenderedEl, renderNodes } from "./renderer.js";
 import { history } from "./history.js";
-import { saveNode, setNodeDoneStatus } from "./db.js";
+import {
+  addParentInput,
+  removeParentInput,
+  replaceParentInput,
+  saveNode,
+} from "./db.js";
 import { errorReporter } from "./error.js";
+import {
+  drawConnections,
+  getHighlightedThread,
+  highlightThread,
+  clearThreadHighlight,
+} from "./connections.js";
 
-const SVG_NS = "http://www.w3.org/2000/svg";
-const LOCK_TOOLTIP_TEXT = "برخی از وظایف واسط مخفی هستند";
+/**
+ * Delegated mousedown handler for the SVG connection layer: grabbing any
+ * thread (its invisible hit path) starts a `move-connection` drag of that
+ * exact thread. Projected threads (hidden real source or child) are not
+ * grabbable.
+ *
+ * Attached once by app.js — this replaces per-thread listeners and keeps
+ * connections.js render-only.
+ *
+ * @param {MouseEvent} e
+ * @returns {void}
+ */
+export function handleSvgLayerMouseDown(e) {
+  if (e.button !== 0) return;
+  const hit = e.target.closest(".thread-hit");
+  if (!hit) return;
 
-// ============================================================
-// Helpers
-// ============================================================
-
-function isNodeHidden(node) {
-  return (
-    document.body.classList.contains("filter-active") &&
-    node.type === "task" &&
-    !!node.done
+  const parent = state.nodes.find(
+    (n) => String(n.id) === String(hit.dataset.parent),
   );
-}
+  const child = state.nodes.find(
+    (n) => String(n.id) === String(hit.dataset.child),
+  );
+  if (!parent || !child) return;
+  if (isNodeHidden(parent) || isNodeHidden(child)) return;
 
-function syncHasParentClasses() {
-  state.nodes.forEach((node) => {
-    const el = getRenderedEl(node.id);
-    if (!el) return;
-    el.classList.toggle("has-parent", !!node.parent);
-    const parent = node.parent
-      ? state.nodes.find((n) => String(n.id) === String(node.parent))
-      : null;
-    el.classList.toggle("parent-hidden", !!parent && isNodeHidden(parent));
-  });
-}
-
-function nearestVisibleAncestor(node) {
-  let currentId = node.parent;
-  const guard = new Set();
-  while (currentId && !guard.has(String(currentId))) {
-    guard.add(String(currentId));
-    const p = state.nodes.find((n) => String(n.id) === String(currentId));
-    if (!p) return null;
-    if (!isNodeHidden(p)) return p;
-    currentId = p.parent;
-  }
-  return null;
-}
-
-// ============================================================
-// Lock Tooltip (برای اتصال‌های نمایشی)
-// ============================================================
-
-let lockTooltipEl = null;
-let lockTooltipActive = false;
-
-function ensureLockTooltip() {
-  if (!lockTooltipEl) {
-    lockTooltipEl = document.createElement("div");
-    lockTooltipEl.className = "lock-tooltip hidden";
-    document.body.appendChild(lockTooltipEl);
-  }
-  return lockTooltipEl;
-}
-
-function positionLockTooltip(x, y) {
-  if (!lockTooltipEl) return;
-  lockTooltipEl.style.left = `${x}px`;
-  lockTooltipEl.style.top = `${y - 34}px`;
-  const r = lockTooltipEl.getBoundingClientRect();
-  if (r.top < 8) lockTooltipEl.style.top = `${y + 20}px`;
-  if (r.right > window.innerWidth - 8)
-    lockTooltipEl.style.left = `${x - r.width}px`;
-  if (r.left < 8) lockTooltipEl.style.left = "8px";
-}
-
-function lockTooltipMouseMove(ev) {
-  const el = document.elementFromPoint(ev.clientX, ev.clientY);
-  if (el && el.closest(".lock-icon")) {
-    positionLockTooltip(ev.clientX, ev.clientY);
-  } else {
-    hideLockTooltip();
-  }
-}
-
-function showLockTooltip(ev) {
-  const t = ensureLockTooltip();
-  t.textContent = LOCK_TOOLTIP_TEXT;
-  t.classList.remove("hidden");
-  positionLockTooltip(ev.clientX, ev.clientY);
-  if (!lockTooltipActive) {
-    lockTooltipActive = true;
-    document.addEventListener("mousemove", lockTooltipMouseMove);
-  }
-}
-
-function hideLockTooltip() {
-  if (lockTooltipActive) {
-    lockTooltipActive = false;
-    document.removeEventListener("mousemove", lockTooltipMouseMove);
-  }
-  if (lockTooltipEl) lockTooltipEl.classList.add("hidden");
-}
-
-// ============================================================
-// Lock Icon (روی اتصال نمایشی، نزدیک نود فرزند)
-// ============================================================
-
-function appendLockIcon(x1, y1, midX, x2, y2) {
-  const cubicAt = (t) => {
-    const u = 1 - t;
-    return {
-      x:
-        u * u * u * x1 +
-        3 * u * u * t * midX +
-        3 * u * t * t * midX +
-        t * t * t * x2,
-      y:
-        u * u * u * y1 +
-        3 * u * u * t * y1 +
-        3 * u * t * t * y2 +
-        t * t * t * y2,
-    };
+  state.dragData = {
+    type: "move-connection",
+    sourceNode: parent,
+    targetNode: child,
   };
 
-  let p = null;
-  for (let t = 0.98; t >= 0.55; t -= 0.01) {
-    const q = cubicAt(t);
-    if (Math.abs(q.x - x2) >= 26 && q.x <= x1 - 18) {
-      p = q;
-      break;
-    }
-  }
-  if (!p) p = cubicAt(0.6);
-
-  const cx = p.x;
-  const cy = p.y;
-
-  const g = document.createElementNS(SVG_NS, "g");
-  g.setAttribute("class", "lock-icon");
-
-  const hit = document.createElementNS(SVG_NS, "rect");
-  hit.setAttribute("x", cx - 10);
-  hit.setAttribute("y", cy - 10);
-  hit.setAttribute("width", 20);
-  hit.setAttribute("height", 20);
-  hit.setAttribute("fill", "transparent");
-  g.appendChild(hit);
-
-  const body = document.createElementNS(SVG_NS, "rect");
-  body.setAttribute("class", "lock-body");
-  body.setAttribute("x", cx - 4);
-  body.setAttribute("y", cy - 2);
-  body.setAttribute("width", 8);
-  body.setAttribute("height", 6.5);
-  body.setAttribute("rx", 1.5);
-  g.appendChild(body);
-
-  const shackle = document.createElementNS(SVG_NS, "path");
-  shackle.setAttribute("class", "lock-shackle");
-  shackle.setAttribute("d", `M ${cx - 2} ${cy - 2} v -2 a 2 2 0 0 1 4 0 v 2`);
-  g.appendChild(shackle);
-
-  g.addEventListener("mouseenter", showLockTooltip);
-  g.addEventListener("mouseleave", hideLockTooltip);
-
-  dom.svgLayer.appendChild(g);
+  document.addEventListener("mousemove", handleDrag);
+  document.addEventListener("mouseup", handleDragEnd);
 }
 
-// ============================================================
-// Main Drag Handlers
-// ============================================================
-
+/**
+ * Starts a node-move drag session.
+ *
+ * @param {MouseEvent} e Originating event.
+ * @param {object} node Node being dragged.
+ * @returns {void}
+ */
 export function handleNodeMouseDown(e, node) {
   if (e.button !== 0 || e.target.classList.contains("connection-point")) return;
 
@@ -189,6 +85,16 @@ export function handleNodeMouseDown(e, node) {
   document.addEventListener("mouseup", handleDragEnd);
 }
 
+/**
+ * Starts a connection drag. The left port begins a new thread from this
+ * node; the right port grabs the node's primary input thread. Hidden
+ * sources cannot be grabbed (projected connection).
+ *
+ * @param {MouseEvent} e Originating event.
+ * @param {object} node Node owning the port.
+ * @param {("left"|"right")} portType Port side.
+ * @returns {void}
+ */
 export function handlePortMouseDown(e, node, portType) {
   if (e.button !== 0) return;
   e.stopPropagation();
@@ -209,10 +115,11 @@ export function handlePortMouseDown(e, node, portType) {
   document.addEventListener("mouseup", handleDragEnd);
 }
 
-// ============================================================
-// Drag Movement
-// ============================================================
-
+/**
+ * Routes pointer-move events to the active drag session.
+ * @param {MouseEvent} e
+ * @returns {void}
+ */
 function handleDrag(e) {
   if (!state.dragData) return;
 
@@ -223,6 +130,12 @@ function handleDrag(e) {
   }
 }
 
+/**
+ * Moves the dragged node element with the pointer (threshold-gated) and
+ * requests a throttled connection redraw.
+ * @param {MouseEvent} e
+ * @returns {void}
+ */
 function handleNodeDrag(e) {
   const dx = e.clientX - state.dragData.startX;
   const dy = e.clientY - state.dragData.startY;
@@ -236,17 +149,30 @@ function handleNodeDrag(e) {
     state.dragData.el.style.left = `${state.dragData.initX + dx}px`;
     state.dragData.el.style.top = `${state.dragData.initY + dy}px`;
   }
-  requestDraw();
+  requestAnimationFrame(() => drawConnections());
 }
 
-// ============================================================
-// Connection Drag (visual line)
-// ============================================================
-
+/**
+ * Draws the in-flight connection line and computes the live drop feedback:
+ *
+ * - Over a node body: blue when a valid new input; gray (no-op) when
+ *   hovering the very child/source the thread was detached from; red when
+ *   invalid.
+ * - Over a thread: the hovered thread turns yellow (replacement target)
+ *   and the line is blue when the source can validly replace it. A thread
+ *   cannot be replaced by its own current source, and projected threads
+ *   are not replaceable.
+ *
+ * @param {MouseEvent} e
+ * @returns {void}
+ */
 function handleConnectionDrag(e) {
   if (!state.dragData.tempLine) {
     if (state.dragData.type === "move-connection") drawConnections();
-    state.dragData.tempLine = document.createElementNS(SVG_NS, "path");
+    state.dragData.tempLine = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "path",
+    );
     state.dragData.tempLine.setAttribute("stroke-width", "2");
     state.dragData.tempLine.setAttribute("stroke-dasharray", "5,5");
     state.dragData.tempLine.setAttribute("fill", "none");
@@ -258,25 +184,59 @@ function handleConnectionDrag(e) {
   const targetEl = elementUnderMouse
     ? elementUnderMouse.closest(".node")
     : null;
+  const threadEl = elementUnderMouse
+    ? elementUnderMouse.closest(".thread-hit")
+    : null;
+
   let isConnectable = false;
+  let isNoOp = false;
+  let highlightPath = null;
 
   if (targetEl) {
     const targetId = targetEl.dataset.id;
     const targetNode = state.nodes.find((n) => n.id == targetId);
     if (targetNode && !isNodeHidden(targetNode)) {
-      if (state.dragData.type === "new-connection") {
-        isConnectable = canConnect(state.dragData.sourceNode, targetNode);
-      } else if (state.dragData.type === "move-connection") {
-        isConnectable = canConnect(targetNode, state.dragData.targetNode);
+      isConnectable = canConnect(state.dragData.sourceNode, targetNode);
+
+      if (
+        !isConnectable &&
+        state.dragData.type === "move-connection" &&
+        state.dragData.targetNode &&
+        (String(targetNode.id) === String(state.dragData.targetNode.id) ||
+          String(targetNode.id) === String(state.dragData.sourceNode.id))
+      ) {
+        isNoOp = true;
       }
     }
+  } else if (threadEl) {
+    const parentId = threadEl.dataset.parent;
+    const childId = threadEl.dataset.child;
+    const childNode = state.nodes.find((n) => String(n.id) === String(childId));
+    const realParent = state.nodes.find(
+      (n) => String(n.id) === String(parentId),
+    );
+    if (
+      childNode &&
+      realParent &&
+      !isNodeHidden(childNode) &&
+      !isNodeHidden(realParent) &&
+      String(state.dragData.sourceNode.id) !== String(parentId) &&
+      canConnectRaw(state.dragData.sourceNode, childNode)
+    ) {
+      isConnectable = true;
+      highlightPath = threadEl.previousElementSibling;
+    }
+  }
+
+  if (highlightPath !== getHighlightedThread()) {
+    highlightThread(highlightPath);
   }
 
   state.dragData.tempLine.setAttribute(
     "stroke",
     isConnectable
       ? "#007bff"
-      : state.dragData.type === "new-connection"
+      : isNoOp || state.dragData.type === "new-connection"
         ? "#ccc"
         : "#ff0000",
   );
@@ -299,10 +259,14 @@ function handleConnectionDrag(e) {
   );
 }
 
-// ============================================================
-// Drag End
-// ============================================================
-
+/**
+ * Finalizes the active drag session: delegates to the node/connection
+ * end handler, always redraws (even on failure) and detaches the
+ * document-level listeners.
+ *
+ * @param {MouseEvent} e
+ * @returns {void}
+ */
 function handleDragEnd(e) {
   if (!state.dragData) return;
 
@@ -320,9 +284,17 @@ function handleDragEnd(e) {
     state.dragData = null;
     document.removeEventListener("mousemove", handleDrag);
     document.removeEventListener("mouseup", handleDragEnd);
+    drawConnections();
   }
 }
 
+/**
+ * Commits a node move: persists the new position, runs overlap
+ * resolution, and records a history entry when the position actually
+ * changed.
+ *
+ * @returns {void}
+ */
 function handleNodeDragEnd() {
   if (!state.dragData.moved) return;
 
@@ -355,6 +327,19 @@ function handleNodeDragEnd() {
   }
 }
 
+/**
+ * Commits a connection drag according to the drop target:
+ *
+ * - Node body → add the source as a new input of that node (duplicates
+ *   are rejected by `canConnect`, making the drop a silent no-op).
+ * - Thread → replace that exact thread's slot in place.
+ * - Empty space with a grabbed thread → detach it.
+ *
+ * Nothing is recorded in history when nothing changed.
+ *
+ * @param {MouseEvent} e
+ * @returns {void}
+ */
 function handleConnectionDragEnd(e) {
   if (state.dragData.tempLine) {
     state.dragData.tempLine.style.visibility = "hidden";
@@ -364,40 +349,75 @@ function handleConnectionDragEnd(e) {
   const targetEl = elementUnderMouse
     ? elementUnderMouse.closest(".node")
     : null;
+  const threadEl = elementUnderMouse
+    ? elementUnderMouse.closest(".thread-hit")
+    : null;
 
+  clearThreadHighlight();
   state.dragData.tempLine.remove();
 
-  if (targetEl) {
-    const targetId = targetEl.dataset.id;
-    const targetNode = state.nodes.find((n) => n.id == targetId);
+  const source = state.dragData.sourceNode;
+  const draggedChild =
+    state.dragData.type === "move-connection"
+      ? state.dragData.targetNode
+      : null;
 
-    if (targetNode && !isNodeHidden(targetNode)) {
-      if (canConnect(state.dragData.sourceNode, targetNode)) {
-        if (state.dragData.type === "move-connection") {
-          state.dragData.targetNode.parent = null;
-          saveNode(state.dragData.targetNode);
-        }
-        targetNode.parent = state.dragData.sourceNode.id;
-        saveNode(targetNode);
-        if (state.dragData.sourceNode.type === "task") {
-          setNodeDoneStatus(state.dragData.sourceNode, true);
-        }
-        history.push(state.nodes, "اتصال گره");
-      }
+  let changed = false;
+  let label = "اتصال گره";
+
+  if (targetEl) {
+    const dropNode = state.nodes.find((n) => n.id == targetEl.dataset.id);
+    if (dropNode && !isNodeHidden(dropNode) && canConnect(source, dropNode)) {
+      if (draggedChild) removeParentInput(draggedChild, source.id);
+      addParentInput(dropNode, source.id);
+      changed = true;
     }
-  } else if (state.dragData.type === "move-connection") {
-    state.dragData.targetNode.parent = null;
-    saveNode(state.dragData.targetNode);
-    history.push(state.nodes, "قطع اتصال");
+  } else if (threadEl) {
+    const oldParentId = threadEl.dataset.parent;
+    const childId = threadEl.dataset.child;
+    const dropNode = state.nodes.find((n) => String(n.id) === String(childId));
+    const realParent = state.nodes.find(
+      (n) => String(n.id) === String(oldParentId),
+    );
+    if (
+      dropNode &&
+      realParent &&
+      !isNodeHidden(dropNode) &&
+      !isNodeHidden(realParent) &&
+      String(source.id) !== String(oldParentId) &&
+      canConnectRaw(source, dropNode)
+    ) {
+      if (draggedChild) removeParentInput(draggedChild, source.id);
+      replaceParentInput(dropNode, oldParentId, source.id);
+      changed = true;
+      label = "جایگزینی اتصال";
+    }
+  } else if (draggedChild) {
+    removeParentInput(draggedChild, source.id);
+    changed = true;
+    label = "قطع اتصال";
+  }
+
+  if (changed) {
+    history.push(state.nodes, label);
   }
 
   renderNodes();
 }
 
-// ============================================================
-// Overlap Resolution
-// ============================================================
+/* ============================================================
+ * Overlap resolution
+ * ============================================================ */
 
+/**
+ * Pushes a just-dropped node downward (in `OVERLAP_PUSH_AMOUNT` steps)
+ * until it no longer intersects any visible node box or existing
+ * connection curve, then animates it into place. Hidden (filtered) nodes
+ * never participate.
+ *
+ * @param {object} movedNode The dropped node (mutated in place).
+ * @returns {void}
+ */
 function resolveOverlaps(movedNode) {
   const originalY = movedNode.y;
 
@@ -479,6 +499,17 @@ function resolveOverlaps(movedNode) {
   }
 }
 
+/**
+ * Samples every visible connection curve (5% steps) and reports whether
+ * it passes through the given bounding box.
+ *
+ * @param {number} mX1 Box left.
+ * @param {number} mX2 Box right.
+ * @param {number} mY1 Box top.
+ * @param {number} mY2 Box bottom.
+ * @param {string} movedId Id of the moved node (its own threads excluded).
+ * @returns {boolean} True when any curve intersects the box.
+ */
 function checkCurveOverlap(mX1, mX2, mY1, mY2, movedId) {
   for (const node of state.nodes) {
     if (!node.parent || node.id === movedId) continue;
@@ -526,74 +557,4 @@ function checkCurveOverlap(mX1, mX2, mY1, mY2, movedId) {
     if (intersectsX && maxY >= mY1 && minY <= mY2) return true;
   }
   return false;
-}
-
-// ============================================================
-// Drawing
-// ============================================================
-
-export function requestDraw() {
-  if (!state.isDrawing) {
-    state.isDrawing = true;
-    requestAnimationFrame(() => {
-      drawConnections();
-      state.isDrawing = false;
-    });
-  }
-}
-
-export function drawConnections() {
-  syncHasParentClasses();
-
-  dom.svgLayer.innerHTML = "";
-  const canvasRect = dom.canvas.getBoundingClientRect();
-
-  state.nodes.forEach((node) => {
-    if (!node.parent) return;
-    if (
-      state.dragData?.type === "move-connection" &&
-      state.dragData.targetNode.id === node.id
-    )
-      return;
-    if (isNodeHidden(node)) return;
-
-    const parent = nearestVisibleAncestor(node);
-    if (!parent) return;
-
-    const isProjection = String(node.parent) !== String(parent.id);
-
-    const parentEl = getRenderedEl(parent.id);
-    const childEl = getRenderedEl(node.id);
-    if (!parentEl || !childEl) return;
-
-    const pCp = parentEl.querySelector(".cp-left");
-    const cCp = childEl.querySelector(".cp-right");
-    if (!pCp || !cCp) return;
-
-    const pRect = pCp.getBoundingClientRect();
-    const cRect = cCp.getBoundingClientRect();
-    const x1 = pRect.left - canvasRect.left + 4;
-    const y1 = pRect.top - canvasRect.top + 4;
-    const x2 = cRect.left - canvasRect.left + 4;
-    const y2 = cRect.top - canvasRect.top + 4;
-    const midX = (x1 + x2) / 2;
-
-    const path = document.createElementNS(SVG_NS, "path");
-    path.setAttribute(
-      "class",
-      isProjection ? "connection-line projected" : "connection-line",
-    );
-    path.setAttribute(
-      "d",
-      `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`,
-    );
-    path.setAttribute("fill", "none");
-    path.setAttribute("stroke", "#ccc");
-    path.setAttribute("stroke-width", "2");
-    dom.svgLayer.appendChild(path);
-
-    if (isProjection) {
-      appendLockIcon(x1, y1, midX, x2, y2);
-    }
-  });
 }

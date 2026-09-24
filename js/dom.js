@@ -1,3 +1,13 @@
+/**
+ * @module dom
+ * @description Cached DOM references plus positioning utilities for
+ * floating UI elements (menus, modals, tooltips).
+ */
+
+/**
+ * Cached references to every DOM element the application interacts with.
+ * @type {object}
+ */
 export const dom = {
   canvas: document.getElementById("canvas"),
   svgLayer: document.getElementById("connections-layer"),
@@ -25,6 +35,10 @@ export const dom = {
   filterActiveBtn: document.getElementById("tool-filter-active"),
 };
 
+/**
+ * Hides every context-style menu (canvas, element, notes, more, history panel).
+ * @returns {void}
+ */
 export function hideAllMenus() {
   dom.contextMenu.classList.add("hidden");
   dom.elementMenu.classList.add("hidden");
@@ -33,6 +47,10 @@ export function hideAllMenus() {
   if (dom.historyPanel) dom.historyPanel.classList.add("hidden");
 }
 
+/**
+ * Hides every modal dialog (input, note, confirm, search, diff).
+ * @returns {void}
+ */
 export function hideAllModals() {
   dom.inputModal.classList.add("hidden");
   dom.noteModal.classList.add("hidden");
@@ -41,6 +59,16 @@ export function hideAllModals() {
   if (dom.diffModal) dom.diffModal.classList.add("hidden");
 }
 
+/**
+ * Places a floating element at (`x`, `y`), flipping it above/left of the
+ * anchor point when it would overflow the viewport, and clamping it to a
+ * 10px margin from every edge. Also removes the `hidden` class.
+ *
+ * @param {HTMLElement} el Element to position and reveal.
+ * @param {number} x Viewport X coordinate (right-edge anchor under RTL).
+ * @param {number} y Viewport Y coordinate (top anchor).
+ * @returns {void}
+ */
 export function positionFloating(el, x, y) {
   el.style.top = `${y}px`;
   el.style.left = `${x}px`;
@@ -56,6 +84,14 @@ export function positionFloating(el, x, y) {
   el.style.left = `${newLeft}px`;
 }
 
+/**
+ * Positions the node hover box near the pointer, flipping it above the
+ * cursor when it would overflow the bottom or right viewport edge.
+ *
+ * @param {number} clientX Pointer viewport X.
+ * @param {number} clientY Pointer viewport Y.
+ * @returns {void}
+ */
 export function positionHoverBox(clientX, clientY) {
   dom.hoverBox.style.top = `${clientY + 15}px`;
   dom.hoverBox.style.left = `${clientX}px`;

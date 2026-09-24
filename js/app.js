@@ -1,31 +1,52 @@
+/**
+ * @module app
+ * @description Application entry point: wires canvas pointer events,
+ * applies history states (undo/redo), owns the misc actions (dark mode,
+ * export) and boots the application.
+ */
 import { state } from "./state.js";
 import { dom, positionHoverBox } from "./dom.js";
-import { CONFIG } from "./config.js";
-import { showToast, getShamsiDate, shouldShowHoverBox } from "./utils.js";
+import {
+  showToast,
+  getShamsiDate,
+  shouldShowHoverBox,
+  finite,
+} from "./utils.js";
 import { errorReporter } from "./error.js";
 import { initDB, saveNode, loadNodes, deleteNodeDB } from "./db.js";
 import { history } from "./history.js";
-import { renderNodes, getRenderedEl } from "./renderer.js";
+import { renderNodes } from "./renderer.js";
 import { showHoverBox } from "./hover.js";
 import {
   handleNodeMouseDown,
   handlePortMouseDown,
-  drawConnections,
+  handleSvgLayerMouseDown,
 } from "./drag.js";
-import { layoutTree } from "./layout.js";
+import { drawConnections } from "./connections.js";
+import { autoArrange, scrubPositions } from "./arrange.js";
 import { setupEvents } from "./events.js";
 
-// ============================================================
-// Canvas Events
-// ============================================================
-
+/**
+ * Wires canvas-level listeners: node/port presses and the delegated
+ * thread-grab handler on the SVG layer.
+ *
+ * @returns {void}
+ */
 function setupCanvasEvents() {
   dom.canvas.addEventListener("mousedown", handleCanvasMouseDown);
   dom.canvas.addEventListener("mouseover", handleCanvasMouseOver);
   dom.canvas.addEventListener("mousemove", handleCanvasMouseMove);
   dom.canvas.addEventListener("mouseout", handleCanvasMouseOut);
+  dom.svgLayer.addEventListener("mousedown", handleSvgLayerMouseDown);
 }
 
+/**
+ * Canvas mousedown: dispatches to the port handler (connection points)
+ * or the node-move handler.
+ *
+ * @param {MouseEvent} e
+ * @returns {void}
+ */
 function handleCanvasMouseDown(e) {
   const nodeEl = e.target.closest(".node");
   if (!nodeEl) return;
@@ -47,6 +68,12 @@ function handleCanvasMouseDown(e) {
   if (node) handleNodeMouseDown(e, node);
 }
 
+/**
+ * Shows the hover box when the pointer enters a task node.
+ *
+ * @param {MouseEvent} e
+ * @returns {void}
+ */
 function handleCanvasMouseOver(e) {
   const nodeEl = e.target.closest(".node");
   if (!nodeEl) return;
@@ -57,6 +84,12 @@ function handleCanvasMouseOver(e) {
   }
 }
 
+/**
+ * Keeps the hover box under the pointer while it stays on a node.
+ *
+ * @param {MouseEvent} e
+ * @returns {void}
+ */
 function handleCanvasMouseMove(e) {
   const nodeEl = e.target.closest(".node");
   if (nodeEl) {
@@ -64,6 +97,12 @@ function handleCanvasMouseMove(e) {
   }
 }
 
+/**
+ * Hides the hover box when the pointer leaves a node entirely.
+ *
+ * @param {MouseEvent} e
+ * @returns {void}
+ */
 function handleCanvasMouseOut(e) {
   const nodeEl = e.target.closest(".node");
   if (!nodeEl) return;
@@ -73,161 +112,14 @@ function handleCanvasMouseOut(e) {
   }
 }
 
-// ============================================================
-// Auto Arrange
-// ============================================================
-
-function autoArrange() {
-  const allNodes = state.nodes;
-  const filterOn = document.body.classList.contains("filter-active");
-
-  const layoutNodes = filterOn
-    ? allNodes.filter((n) => !(n.type === "task" && n.done))
-    : allNodes;
-
-  if (layoutNodes.length === 0) return;
-
-  const layoutIds = new Set(layoutNodes.map((n) => String(n.id)));
-
-  const savedParents = new Map();
-  if (filterOn) {
-    layoutNodes.forEach((n) => {
-      if (!n.parent || layoutIds.has(String(n.parent))) return;
-      let ancId = n.parent;
-      let visibleAnc = null;
-      const guard = new Set();
-      while (ancId && !guard.has(String(ancId))) {
-        guard.add(String(ancId));
-        if (layoutIds.has(String(ancId))) {
-          visibleAnc = ancId;
-          break;
-        }
-        const ancNode = allNodes.find((m) => String(m.id) === String(ancId));
-        ancId = ancNode?.parent ?? null;
-      }
-      savedParents.set(String(n.id), n.parent);
-      n.parent = visibleAnc;
-    });
-  }
-
-  state.nodes = layoutNodes;
-  try {
-    renderNodes();
-
-    const oldPos = {};
-    layoutNodes.forEach((n) => (oldPos[n.id] = { x: n.x, y: n.y }));
-
-    const roots = layoutNodes.filter((n) => !n.parent);
-    if (roots.length === 0) return;
-
-    let currentY = CONFIG.CANVAS_INITIAL_Y_OFFSET;
-    roots.forEach((root) => {
-      const bounds = layoutTree(root, 300, currentY);
-      currentY = bounds.maxY + 25.7;
-    });
-
-    const { minX, minY, maxX, maxY } = computeBounds();
-    const canvasPanned = maybeAutoPan(minX, minY, maxX, maxY);
-
-    layoutNodes.forEach((node) => {
-      const el = getRenderedEl(node.id);
-      if (el) {
-        el.style.left = `${oldPos[node.id].x}px`;
-        el.style.top = `${oldPos[node.id].y}px`;
-      }
-    });
-
-    void dom.canvas.offsetWidth;
-
-    layoutNodes.forEach((node) => {
-      const el = getRenderedEl(node.id);
-      if (el) {
-        el.classList.add("smooth-arrange");
-        el.style.left = `${node.x}px`;
-        el.style.top = `${node.y}px`;
-      }
-    });
-
-    const start = performance.now();
-    const animateLoop = (now) => {
-      drawConnections();
-      if (now - start < CONFIG.ANIMATION_DURATION) {
-        requestAnimationFrame(animateLoop);
-      } else {
-        layoutNodes.forEach((node) => {
-          const el = getRenderedEl(node.id);
-          if (el) el.classList.remove("smooth-arrange");
-        });
-        if (canvasPanned) dom.canvas.style.transition = "";
-      }
-    };
-    requestAnimationFrame(animateLoop);
-  } finally {
-    state.nodes = allNodes;
-    savedParents.forEach((parent, id) => {
-      const node = allNodes.find((n) => String(n.id) === id);
-      if (node) node.parent = parent;
-    });
-  }
-
-  allNodes.forEach(saveNode);
-  history.push(allNodes, "چینش خودکار");
-}
-
-function computeBounds() {
-  let minX = Infinity,
-    minY = Infinity,
-    maxX = -Infinity,
-    maxY = -Infinity;
-  state.nodes.forEach((node) => {
-    minX = Math.min(minX, node.x);
-    minY = Math.min(minY, node.y);
-    const el = getRenderedEl(node.id);
-    const w = el ? el.offsetWidth : CONFIG.FALLBACK_WIDTH;
-    const h = el ? el.offsetHeight : CONFIG.FALLBACK_HEIGHT;
-    maxX = Math.max(maxX, node.x + w);
-    maxY = Math.max(maxY, node.y + h);
-  });
-  return { minX, minY, maxX, maxY };
-}
-
-function maybeAutoPan(minX, minY, maxX, maxY) {
-  const cLeft = parseInt(dom.canvas.style.left || 0);
-  const cTop = parseInt(dom.canvas.style.top || 0);
-  const isFullyOutside = !(
-    cLeft + maxX > 0 &&
-    cLeft + minX < window.innerWidth &&
-    cTop + maxY > 0 &&
-    cTop + minY < window.innerHeight
-  );
-
-  if (isFullyOutside && !isNaN(minX)) {
-    const newLeft = window.innerWidth * 0.75 - maxX;
-    const newTop = window.innerHeight * 0.35 - minY;
-    panCanvas(newLeft, newTop, true);
-    return true;
-  }
-  return false;
-}
-
-function panCanvas(x, y, withTransition = true) {
-  if (withTransition)
-    dom.canvas.style.transition = "left 0.3s ease, top 0.3s ease";
-  dom.canvas.style.left = `${x}px`;
-  dom.canvas.style.top = `${y}px`;
-  localStorage.setItem("canvasX", x);
-  localStorage.setItem("canvasY", y);
-  if (withTransition) {
-    setTimeout(() => {
-      dom.canvas.style.transition = "";
-    }, CONFIG.ANIMATION_DURATION);
-  }
-}
-
-// ============================================================
-// Undo / Redo
-// ============================================================
-
+/**
+ * Applies a history snapshot as the current state: deletes nodes absent
+ * from the snapshot, normalizes notes/extra-parents, snaps coordinates to
+ * pixels and re-renders.
+ *
+ * @param {Array<object>} nodesState Snapshot to apply.
+ * @returns {void}
+ */
 function applyState(nodesState) {
   const keepIds = new Set(nodesState.map((n) => n.id));
   state.nodes.forEach((n) => {
@@ -237,6 +129,12 @@ function applyState(nodesState) {
   state.nodes = nodesState;
   state.nodes.forEach((node) => {
     if (!node.notes) node.notes = [];
+    if (!Array.isArray(node.extraParents)) node.extraParents = [];
+    if (node.parent == null && node.extraParents.length > 0) {
+      node.parent = node.extraParents.shift();
+    }
+    if (finite(node.x)) node.x = Math.round(node.x);
+    if (finite(node.y)) node.y = Math.round(node.y);
     saveNode(node);
   });
   renderNodes();
@@ -245,6 +143,11 @@ function applyState(nodesState) {
   dom.emptyState.style.display = nodesState.length === 0 ? "block" : "none";
 }
 
+/**
+ * Steps one entry back in history and applies it.
+ *
+ * @returns {void}
+ */
 function undo() {
   const prevState = history.undo();
   if (prevState) {
@@ -253,6 +156,11 @@ function undo() {
   }
 }
 
+/**
+ * Steps one entry forward in history and applies it.
+ *
+ * @returns {void}
+ */
 function redo() {
   const nextState = history.redo();
   if (nextState) {
@@ -261,10 +169,11 @@ function redo() {
   }
 }
 
-// ============================================================
-// Misc
-// ============================================================
-
+/**
+ * Toggles dark mode and persists the preference.
+ *
+ * @returns {void}
+ */
 function toggleDarkMode() {
   document.body.classList.toggle("dark-mode");
   localStorage.setItem(
@@ -273,6 +182,11 @@ function toggleDarkMode() {
   );
 }
 
+/**
+ * Exports the current graph as a dated JSON download.
+ *
+ * @returns {void}
+ */
 function exportData() {
   try {
     const data = {
@@ -296,11 +210,15 @@ function exportData() {
   }
 }
 
-// ============================================================
-// Init
-// ============================================================
-
-(async () => {
+/**
+ * Boots the application: restores preferences (dark mode and the done
+ * filter — the filter must be applied *before* the first render so
+ * projected threads draw correctly), loads and sanitizes persisted nodes,
+ * restores or seeds history, and wires all event modules.
+ *
+ * @returns {Promise<void>}
+ */
+async function init() {
   try {
     dom.dateDisplay.innerText = getShamsiDate();
 
@@ -316,7 +234,13 @@ function exportData() {
     state.nodes = await loadNodes();
     state.nodes.forEach((node) => {
       if (!node.notes) node.notes = [];
+      if (!Array.isArray(node.extraParents)) node.extraParents = [];
+      if (node.parent == null && node.extraParents.length > 0) {
+        node.parent = node.extraParents.shift();
+      }
     });
+
+    scrubPositions(state.nodes);
 
     if (state.nodes.length === 0) {
       dom.emptyState.style.display = "block";
@@ -333,16 +257,18 @@ function exportData() {
 
     window.__applyHistoryState = applyState;
     setupCanvasEvents();
-    setupEvents(
+    setupEvents({
       renderNodes,
       autoArrange,
       undo,
       redo,
       toggleDarkMode,
       exportData,
-    );
+    });
   } catch (error) {
     errorReporter.report(error, { context: "init" });
     showToast("خطا در راه‌اندازی", "error");
   }
-})();
+}
+
+init();

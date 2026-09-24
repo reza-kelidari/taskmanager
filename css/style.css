@@ -15,8 +15,11 @@
   --text-primary: #333;
   --text-secondary: #666;
   --text-muted: #888;
-  --border-color: #e8e8e8;
-  --border-light: #eee;
+  /* ✅ بوردر عمومی UI — ملایم (فقط کمی تیره‌تر از قبل) */
+  --border-color: #dcdcdc;
+  --border-light: #e0e0e0;
+  /* ✅ بوردر پررنگ — فقط نودها و خطوط اتصال روی بوم */
+  --border-strong: #cccccc;
   --accent: #007bff;
   --accent-hover: #0056b3;
   --success: #28a745;
@@ -32,7 +35,7 @@
   --radius-lg: 20px;
   --radius-full: 999px;
   --transition: 0.2s ease;
-  /* ✅ سیستم مشترک نوار ابزار و منوهای تکمیلی */
+  /* سیستم مشترک نوار ابزار و منوهای تکمیلی */
   --menu-radius: 16px;
   --menu-padding: 6px;
   --menu-gap: 4px;
@@ -47,6 +50,7 @@ body.dark-mode {
   --text-muted: #888;
   --border-color: #444;
   --border-light: #444;
+  --border-strong: #5a5a5a;
   --shadow-sm: 0 2px 5px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 2px 10px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 4px 15px rgba(0, 0, 0, 0.5);
@@ -81,13 +85,13 @@ body {
   z-index: 1000;
   display: flex;
   flex-direction: column;
-  gap: var(--menu-gap); /* ✅ */
-  padding: var(--menu-padding); /* ✅ */
+  gap: var(--menu-gap);
+  padding: var(--menu-padding);
   background: rgba(255, 255, 255, 0.75);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--border-color);
-  border-radius: var(--menu-radius); /* ✅ ۱۶px */
+  border-radius: var(--menu-radius);
   box-shadow: var(--shadow-md);
   align-items: stretch;
   width: max-content;
@@ -104,7 +108,6 @@ body.dark-mode .tools {
   border: 1px solid transparent;
   padding-block: 6px;
   padding-inline-start: 6px;
-  /* حالت جمع‌شده: بدون فضای انتهایی اضافه */
   padding-inline-end: 6px;
   cursor: pointer;
   border-radius: var(--radius-sm);
@@ -127,8 +130,6 @@ body.dark-mode .tools {
   overflow: hidden;
 }
 
-/* فاصله آیکون تا لیبل + رزرو زون انتهایی (فلش + میانبر)
-   فقط وقتی نوار باز است — در همه‌ی ردیف‌ها یکسان رزرو می‌شود */
 .tools:hover .tool-btn,
 .tools.is-expanded .tool-btn {
   gap: 8px;
@@ -147,7 +148,7 @@ body.dark-mode .tools {
 .tool-btn > .filter-dot {
   width: 12px;
   height: 12px;
-  margin: 3px; /* center in 18px slot */
+  margin: 3px;
 }
 
 body.dark-mode .tool-btn {
@@ -192,7 +193,6 @@ body.dark-mode .tool-btn {
   opacity: 0.85;
 }
 
-/* فلش — absolute در زون رزرو انتهای ردیف */
 .tool-chevron {
   position: absolute;
   inset-inline-end: 4px;
@@ -241,7 +241,6 @@ body.dark-mode .tool-btn:hover:not(:disabled) {
   outline-offset: 2px;
 }
 
-/* حالت فعال فیلتر — تینت خنثی (هماهنگ با دایره خاکستری) */
 .tool-btn.active-filter {
   background: rgba(0, 0, 0, 0.06);
 }
@@ -250,7 +249,6 @@ body.dark-mode .tool-btn.active-filter {
   background: rgba(255, 255, 255, 0.1);
 }
 
-/* دایره: سبز = انجام‌شده‌ها در حال نمایش / خاکستری = مخفی */
 .filter-dot {
   border-radius: 50%;
   background: var(--success);
@@ -264,10 +262,6 @@ body.dark-mode .tool-btn.active-filter {
   box-shadow: 0 0 0 2px rgba(154, 154, 154, 0.3);
 }
 
-/*
-  همه آیتم‌های ثانویه داخل یک wrapper —
-  وقتی بسته است ارتفاع صفر می‌شود و دیگر gap اضافه نمی‌گیرد.
-*/
 .tools-secondary {
   display: flex;
   flex-direction: column;
@@ -277,7 +271,6 @@ body.dark-mode .tool-btn.active-filter {
   overflow: hidden;
   margin: 0;
   padding: 0;
-  /* ✅ خنثی کردن gap والد — همیشه با menu-gap سینک است */
   margin-top: calc(var(--menu-gap) * -1);
   pointer-events: none;
   visibility: hidden;
@@ -292,7 +285,7 @@ body.dark-mode .tool-btn.active-filter {
   max-height: 280px;
   opacity: 1;
   margin-top: 0;
-  gap: var(--menu-gap); /* ✅ */
+  gap: var(--menu-gap);
   pointer-events: auto;
   visibility: visible;
   overflow: visible;
@@ -312,7 +305,7 @@ body.dark-mode .tool-btn.active-filter {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--menu-gap); /* ✅ */
+  gap: var(--menu-gap);
   flex-shrink: 0;
 }
 
@@ -333,20 +326,19 @@ body.dark-mode .tool-btn.active-filter {
   overflow-y: auto;
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
-  border-radius: var(--menu-radius); /* ✅ */
+  border-radius: var(--menu-radius);
   box-shadow: var(--shadow-lg);
-  padding: var(--menu-padding); /* ✅ */
+  padding: var(--menu-padding);
   z-index: 1100;
   display: flex;
   flex-direction: column;
-  gap: var(--menu-gap); /* ✅ */
+  gap: var(--menu-gap);
 }
 
 .history-panel.hidden {
   display: none !important;
 }
 
-/* wrapper هر آیتم — دکمه «...» داخل wrapper ولی بیرون از خود ردیف */
 .history-entry {
   position: relative;
   padding-left: 36px;
@@ -391,7 +383,6 @@ body.dark-mode .tool-btn.active-filter {
   flex-shrink: 0;
 }
 
-/* دکمه «...» — بیرون از ردیف، در gutter سمت چپ */
 .history-item-diff {
   position: absolute;
   left: 4px;
@@ -595,8 +586,9 @@ body.filter-active .node.task.done {
   overflow: visible;
 }
 
+/* ✅ خطوط اتصال — پررنگ (strong) */
 .connection-line {
-  stroke: var(--border-color);
+  stroke: var(--border-strong);
   stroke-dasharray: 5, 5;
   stroke-width: 2;
   fill: none;
@@ -607,41 +599,73 @@ body.filter-active .node.task.done {
   stroke-dasharray: none;
 }
 
-/* آیکون قفل روی اتصال نمایشی */
-.lock-icon {
+/* نخِ در حال جایگزینی — زرد (بعد از projected تعریف شده تا اولویت داشته باشد) */
+.connection-line.thread-target {
+  stroke: var(--warning);
+}
+
+/* نوار هیت نامرئی نخ‌ها — قابل درگ و قابل هدف‌گیری */
+.thread-hit {
+  pointer-events: stroke;
+  stroke: transparent;
+  fill: none;
+  cursor: grab;
+}
+
+.thread-hit:active {
+  cursor: grabbing;
+}
+
+/* آیکون چشمِ خط‌خورده روی اتصال نمایشی */
+.eye-off-icon {
   pointer-events: all;
   cursor: help;
 }
 
-.lock-icon .lock-body {
+.eye-off-icon .eye-bg {
+  fill: var(--bg-primary);
+}
+
+.eye-off-icon .eye-outline {
+  fill: none;
+  stroke: #9a9a9a;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  transition: stroke 0.15s ease;
+}
+
+.eye-off-icon .eye-pupil {
   fill: #9a9a9a;
   transition: fill 0.15s ease;
 }
 
-.lock-icon .lock-shackle {
+.eye-off-icon .eye-slash {
   fill: none;
   stroke: #9a9a9a;
   stroke-width: 1.5;
+  stroke-linecap: round;
   transition: stroke 0.15s ease;
 }
 
-.lock-icon:hover .lock-body {
-  fill: #666666;
-}
-
-.lock-icon:hover .lock-shackle {
+.eye-off-icon:hover .eye-outline,
+.eye-off-icon:hover .eye-slash {
   stroke: #666666;
 }
 
-body.dark-mode .lock-icon:hover .lock-body {
-  fill: #cfcfcf;
+.eye-off-icon:hover .eye-pupil {
+  fill: #666666;
 }
 
-body.dark-mode .lock-icon:hover .lock-shackle {
+body.dark-mode .eye-off-icon:hover .eye-outline,
+body.dark-mode .eye-off-icon:hover .eye-slash {
   stroke: #cfcfcf;
 }
 
-/* تولتیپ قفل */
+body.dark-mode .eye-off-icon:hover .eye-pupil {
+  fill: #cfcfcf;
+}
+
+/* تولتیپ اتصال نمایشی */
 .lock-tooltip {
   position: fixed;
   z-index: 1200;
@@ -672,10 +696,13 @@ body.dark-mode .lock-tooltip {
   font-size: 18px;
   color: var(--text-primary);
   padding: 5px 10px;
-  background: var(--bg-primary);
+  border-radius: var(--radius-sm);
   border: none;
   white-space: nowrap;
-  border-radius: var(--radius-sm);
+}
+
+.node.header.has-parent {
+  font-weight: 400;
 }
 
 .node.task {
@@ -684,7 +711,7 @@ body.dark-mode .lock-tooltip {
   flex-direction: row;
   padding: 10px 20px;
   background: var(--bg-primary);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-full);
   white-space: nowrap;
   box-shadow: var(--shadow-sm);
@@ -697,19 +724,29 @@ body.dark-mode .lock-tooltip {
 
 .node.task.done {
   border-color: var(--success);
-  background-color: rgba(40, 167, 69, 0.05);
-}
-
-body.dark-mode .node.task.done {
-  background-color: rgba(40, 167, 69, 0.15);
+  background-color: var(--success);
 }
 
 .node.task.done .task-label {
-  color: var(--success);
+  color: #ffffff;
 }
 
-body.dark-mode .node.task.done .task-label {
-  color: #4caf50;
+.node.task.cancelled {
+  border-color: #8a8a8a;
+  background-color: #8a8a8a;
+}
+
+.node.task.cancelled .task-label {
+  color: #ffffff;
+}
+
+body.dark-mode .node.task.cancelled {
+  border-color: #7d7d7d;
+  background-color: #7d7d7d;
+}
+
+body.dark-mode .node.task.cancelled .task-label {
+  color: #ffffff;
 }
 
 /* ==================== Connection Points ==================== */
@@ -735,7 +772,7 @@ body.dark-mode .node.task.done .task-label {
   background: transparent;
 }
 
-/* نقطه اتصال به والد فقط وقتی نود واقعاً والد دارد */
+/* نقطه اتصال به والد فقط وقتی نود واقعاً ورودی دارد */
 .node:not(.has-parent) .cp-right {
   display: none;
 }
@@ -767,7 +804,6 @@ body.dark-mode .node.task.done .task-label {
   transform: translateY(-50%);
 }
 
-/* نقطه آبی سرفصل سمت چپ (انتها) */
 .node.header .cp-left {
   left: -5px;
   right: auto;
@@ -790,11 +826,11 @@ body.dark-mode .node.task.done .task-label {
   box-shadow: var(--shadow-md);
   z-index: 4;
   min-width: 150px;
-  padding: var(--menu-padding); /* ✅ */
-  border-radius: var(--menu-radius); /* ✅ */
+  padding: var(--menu-padding);
+  border-radius: var(--menu-radius);
   display: flex;
   flex-direction: column;
-  gap: var(--menu-gap); /* ✅ */
+  gap: var(--menu-gap);
   max-height: 300px;
   overflow-y: auto;
 }

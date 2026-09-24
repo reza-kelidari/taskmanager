@@ -1,3 +1,9 @@
+/**
+ * @module modals
+ * @description The node input modal (create/edit header or task) with
+ * localStorage-backed drafts, so partially typed content survives an
+ * accidental close or a page refresh.
+ */
 import { state } from "./state.js";
 import { dom, positionFloating } from "./dom.js";
 import { showToast, saveDraft, loadDraft, clearDraft } from "./utils.js";
@@ -5,6 +11,17 @@ import { CONFIG } from "./config.js";
 import { saveNode } from "./db.js";
 import { history } from "./history.js";
 
+/**
+ * Opens the input modal for creating or editing a node. When a draft was
+ * previously saved for this exact context it pre-fills the fields, and
+ * every keystroke live-saves a new draft.
+ *
+ * @param {("header"|"task")} type Node type being created/edited.
+ * @param {number} x Viewport X anchor (menu position).
+ * @param {number} y Viewport Y anchor.
+ * @param {object|null} [node=null] Node being edited; null for creation.
+ * @returns {void}
+ */
 export function showInputModal(type, x, y, node = null) {
   state.editingNodeId = node ? node.id : null;
   const draftKey = node ? `input_${node.id}` : `input_new_${type}`;
@@ -26,7 +43,6 @@ export function showInputModal(type, x, y, node = null) {
   positionFloating(dom.inputModal, x, y);
   dom.inputTitle.focus();
 
-  // Live-save draft on input
   const persist = () => {
     saveDraft(draftKey, {
       title: dom.inputTitle.value,
@@ -39,6 +55,14 @@ export function showInputModal(type, x, y, node = null) {
   dom.inputNote.oninput = persist;
 }
 
+/**
+ * Persists the modal content: updates the edited node in place or creates
+ * a new one near the anchor point, records a labeled history entry and
+ * clears the consumed drafts. Rejects an empty title with a warning toast.
+ *
+ * @returns {{result: object, wasEditingId: string|null}|null} The saved
+ *   node and the pre-save editing id, or null when validation failed.
+ */
 export function saveInput() {
   const title = dom.inputTitle.value.trim();
   const note = dom.inputNote.value.trim();
@@ -98,7 +122,6 @@ export function saveInput() {
     );
   }
   if (draftKey) clearDraft(draftKey);
-  // Also clear generic new draft
   clearDraft(`input_new_${type}`);
   dom.inputModal.classList.add("hidden");
   state.editingNodeId = null;

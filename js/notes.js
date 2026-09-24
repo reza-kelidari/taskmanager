@@ -1,3 +1,8 @@
+/**
+ * @module notes
+ * @description Per-node notes: the notes list menu, the note editor modal
+ * (with drafts), and persistence.
+ */
 import { state } from "./state.js";
 import { dom, positionFloating } from "./dom.js";
 import {
@@ -12,11 +17,27 @@ import { saveNode } from "./db.js";
 import { history } from "./history.js";
 import { renderNodes } from "./renderer.js";
 
+/**
+ * Opens the notes menu of a node at (`x`, `y`).
+ *
+ * @param {number} x Viewport X anchor.
+ * @param {number} y Viewport Y anchor.
+ * @param {object} node Owner node.
+ * @returns {void}
+ */
 export function showNotesMenu(x, y, node) {
   positionFloating(dom.notesMenu, x, y);
   renderNotesList(node);
 }
 
+/**
+ * Renders the note rows (date/time, truncated preview, edit and delete
+ * actions) of a node inside the notes menu. Deleting routes through the
+ * confirm dialog via `state.pendingDeleteAction`.
+ *
+ * @param {object} node Owner node.
+ * @returns {void}
+ */
 export function renderNotesList(node) {
   dom.notesList.innerHTML = "";
   if (!node.notes || node.notes.length === 0) return;
@@ -72,6 +93,15 @@ export function renderNotesList(node) {
   });
 }
 
+/**
+ * Opens the note editor modal for adding (`isEditing` false) or editing a
+ * note, restoring any saved draft and live-saving keystrokes.
+ *
+ * @param {boolean} isEditing Whether an existing note is being edited.
+ * @param {number} index Index of the note being edited (-1 when adding).
+ * @param {string} text Current note text.
+ * @returns {void}
+ */
 export function openNoteModal(isEditing, index, text) {
   state.editingNoteIndex = index;
   const draftKey =
@@ -92,6 +122,13 @@ export function openNoteModal(isEditing, index, text) {
   dom.noteModal.dataset.draftKey = draftKey;
 }
 
+/**
+ * Saves the note: updates the edited entry (refreshing its date/time) or
+ * appends a new one, records a history entry, clears the draft and
+ * reopens the notes menu.
+ *
+ * @returns {void}
+ */
 export function saveNote() {
   const text = dom.noteTextInput.value.trim();
   if (!text || !state.currentNoteNodeId) {
@@ -101,7 +138,6 @@ export function saveNote() {
   const node = state.nodes.find((n) => n.id == state.currentNoteNodeId);
   if (!node.notes) node.notes = [];
   if (state.editingNoteIndex >= 0) {
-    // Update text and refresh date/time on edit
     node.notes[state.editingNoteIndex].text = text;
     node.notes[state.editingNoteIndex].date = getShamsiDate();
     node.notes[state.editingNoteIndex].time = getCurrentTime();

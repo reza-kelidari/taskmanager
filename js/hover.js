@@ -1,5 +1,18 @@
+/**
+ * @module hover
+ * @description The node hover box: shows a task's description and notes
+ * on pointer hover.
+ */
 import { dom, positionHoverBox } from "./dom.js";
 
+/**
+ * Renders and reveals the hover box for a node. Does nothing when the
+ * node has neither a description nor notes.
+ *
+ * @param {object} node Task node to describe.
+ * @param {MouseEvent} e The triggering mouse event (for positioning).
+ * @returns {void}
+ */
 export function showHoverBox(node, e) {
   const hasDesc = node.note?.trim();
   const notes = node.notes || [];

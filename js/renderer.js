@@ -1,12 +1,29 @@
+/**
+ * @module renderer
+ * @description Minimal virtual-DOM renderer for canvas nodes. Creates,
+ * updates and removes node elements, diffing by id and preserving
+ * connection-point elements across header title rewrites.
+ */
 import { state } from "./state.js";
 import { dom } from "./dom.js";
 import { errorReporter, perfMonitor } from "./error.js";
 
+/**
+ * Keeps a map of rendered node elements in sync with `state.nodes`.
+ */
 class VirtualRenderer {
   constructor() {
+    /** @type {Map<string, {element: HTMLElement, node: object}>} */
     this.renderedNodes = new Map();
   }
 
+  /**
+   * Reconciles the DOM with the given node list: removes stale elements,
+   * updates existing ones and creates missing ones.
+   *
+   * @param {Array<object>} nodes Current node graph.
+   * @returns {void}
+   */
   render(nodes) {
     try {
       perfMonitor.measure("render", () => {
@@ -29,6 +46,13 @@ class VirtualRenderer {
     }
   }
 
+  /**
+   * Creates and registers a new node element.
+   *
+   * @param {string} id Node id.
+   * @param {object} node Node data.
+   * @returns {void}
+   */
   createNode(id, node) {
     const el = document.createElement("div");
     el.className = `node ${node.type}`;
@@ -38,6 +62,13 @@ class VirtualRenderer {
     this.renderedNodes.set(id, { element: el, node });
   }
 
+  /**
+   * Refreshes an already-rendered node element.
+   *
+   * @param {string} id Node id.
+   * @param {object} node Node data.
+   * @returns {void}
+   */
   updateNode(id, node) {
     const cached = this.renderedNodes.get(id);
     if (!cached) return;
@@ -45,6 +76,15 @@ class VirtualRenderer {
     cached.node = node;
   }
 
+  /**
+   * Applies position, state classes, title/label and connection points to
+   * a node element. Header elements rewrite their text content, so their
+   * connection points are detached and re-attached to survive it.
+   *
+   * @param {HTMLElement} el Node element.
+   * @param {object} node Node data.
+   * @returns {void}
+   */
   applyNodeStyles(el, node) {
     el.style.left = `${node.x}px`;
     el.style.top = `${node.y}px`;
@@ -89,6 +129,10 @@ class VirtualRenderer {
     }
   }
 
+  /**
+   * Removes every rendered element and clears the cache.
+   * @returns {void}
+   */
   clear() {
     this.renderedNodes.forEach(({ element }) => element.remove());
     this.renderedNodes.clear();
@@ -97,10 +141,20 @@ class VirtualRenderer {
 
 export const renderer = new VirtualRenderer();
 
+/**
+ * Looks up the currently rendered element of a node.
+ *
+ * @param {string} nodeId Node id.
+ * @returns {HTMLElement|null}
+ */
 export function getRenderedEl(nodeId) {
   return dom.canvas.querySelector(`.node[data-id="${nodeId}"]`);
 }
 
+/**
+ * Re-renders the whole in-memory graph.
+ * @returns {void}
+ */
 export function renderNodes() {
   renderer.render(state.nodes);
 }
