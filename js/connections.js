@@ -11,7 +11,7 @@
  */
 import { state } from "./state.js";
 import { dom } from "./dom.js";
-import { isNodeHidden, nodeParentIds } from "./utils.js";
+import { isNodeHidden, isActivePageNode, nodeParentIds } from "./utils.js";
 import { getRenderedEl } from "./renderer.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -302,7 +302,7 @@ export function requestDraw() {
 }
 
 /**
- * Repaints every connection thread on the SVG layer.
+ * Repaints every connection thread of the active page on the SVG layer.
  *
  * - One thread per input (primary parent + every extra parent).
  * - Hidden nodes (completed tasks and fully-done non-root headers, see
@@ -325,6 +325,7 @@ export function drawConnections() {
   const canvasRect = dom.canvas.getBoundingClientRect();
 
   state.nodes.forEach((node) => {
+    if (!isActivePageNode(node)) return;
     if (isNodeHidden(node)) return;
 
     nodeParentIds(node).forEach((inputId) => {

@@ -7,7 +7,7 @@
 import { state } from "./state.js";
 import { dom } from "./dom.js";
 import { errorReporter, perfMonitor } from "./error.js";
-import { isNodeHidden } from "./utils.js";
+import { isNodeHidden, isActivePageNode } from "./utils.js";
 
 /**
  * Keeps a map of rendered node elements in sync with `state.nodes`.
@@ -156,9 +156,10 @@ export function getRenderedEl(nodeId) {
 }
 
 /**
- * Re-renders the whole in-memory graph.
+ * Re-renders the whole in-memory graph (active page only; other pages
+ * stay persisted but unmounted until switched back).
  * @returns {void}
  */
 export function renderNodes() {
-  renderer.render(state.nodes);
+  renderer.render(state.nodes.filter(isActivePageNode));
 }

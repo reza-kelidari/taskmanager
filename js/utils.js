@@ -249,6 +249,8 @@ export function canConnectRaw(sourceNode, targetNode) {
   if (!sourceNode || !targetNode) return false;
   if (String(sourceNode.id) === String(targetNode.id)) return false;
   if (isAncestorMulti(targetNode.id, sourceNode.id)) return false;
+  if ((sourceNode.pageId ?? null) !== (targetNode.pageId ?? null))
+    return false;
   if (sourceNode.type === "header") return true;
   if (sourceNode.type === "task") return targetNode.type === "task";
   return false;
@@ -267,6 +269,19 @@ export function canConnect(sourceNode, targetNode) {
     canConnectRaw(sourceNode, targetNode) &&
     !hasInputFrom(targetNode, sourceNode ? sourceNode.id : null)
   );
+}
+
+/**
+ * Whether a node belongs to the currently active page. Before pages
+ * boot (`activePageId` null) every node counts as active.
+ *
+ * @param {object} node Node to test.
+ * @returns {boolean}
+ */
+export function isActivePageNode(node) {
+  if (!node) return false;
+  if (state.activePageId == null) return true;
+  return String(node.pageId ?? "") === String(state.activePageId);
 }
 
 /**

@@ -7,6 +7,7 @@ import { state } from "./state.js";
 import { dom, positionFloating } from "./dom.js";
 import { debounce } from "./utils.js";
 import { getRenderedEl } from "./renderer.js";
+import { setActivePage } from "./pages.js";
 
 /**
  * Opens the search modal, centered on the viewport, with previous results
@@ -87,7 +88,7 @@ export function performSearch(query) {
 
 /**
  * Pans the canvas so the node is centered on the viewport and plays the
- * highlight pulse on it.
+ * highlight pulse on it. Switches to the node's page first when needed.
  *
  * @param {string} nodeId Node id to focus.
  * @returns {void}
@@ -95,6 +96,12 @@ export function performSearch(query) {
 export function focusNode(nodeId) {
   const node = state.nodes.find((n) => n.id === nodeId);
   if (!node) return;
+  if (
+    node.pageId != null &&
+    String(node.pageId) !== String(state.activePageId)
+  ) {
+    setActivePage(node.pageId);
+  }
   const centerX = node.x + 75;
   const centerY = node.y + 20;
   dom.canvas.style.transition = "left 0.3s ease, top 0.3s ease";

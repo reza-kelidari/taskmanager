@@ -20,6 +20,13 @@ import { setupContextMenus } from "./context-menus.js";
 import { setupKeyboardShortcuts } from "./keyboard.js";
 import { setupDiffModal } from "./diff.js";
 import { setupDetailsModal } from "./details.js";
+import {
+  setupPages,
+  renderPageTabs,
+  setActivePage,
+  DEFAULT_CONFIRM_TEXT,
+} from "./pages.js";
+import { savePage } from "./db.js";
 
 /**
  * @typedef {object} AppActions
@@ -51,6 +58,7 @@ export function setupEvents(actions) {
   setupKeyboardShortcuts(actions);
   setupDiffModal();
   setupDetailsModal();
+  setupPages();
 
   /* Notes menu / confirm dialog wiring */
 
@@ -84,11 +92,14 @@ export function setupEvents(actions) {
   });
   document.getElementById("confirm-no").addEventListener("click", () => {
     dom.confirmModal.classList.add("hidden");
+    document.getElementById("confirm-text").textContent = DEFAULT_CONFIRM_TEXT;
     state.pendingDeleteAction = null;
     if (state.currentNoteNodeId) {
       const node = state.nodes.find((n) => n.id == state.currentNoteNodeId);
-      const x = parseInt(dom.confirmModal.style.left);
-      const y = parseInt(dom.confirmModal.style.top);
+      let x = parseInt(dom.confirmModal.style.left);
+      let y = parseInt(dom.confirmModal.style.top);
+      if (!Number.isFinite(x)) x = window.innerWidth / 2 - 125;
+      if (!Number.isFinite(y)) y = window.innerHeight / 2 - 100;
       if (node) showNotesMenu(x, y, node);
     }
   });
@@ -175,7 +186,9 @@ function endPan() {
 /**
  * Imports a JSON export: replaces the whole graph, normalizing notes and
  * the multi-input shape (promoting the first extra parent of any node
- * without a primary parent).
+ * without a primary parent). Version-3 payloads carry pages (version-2
+ * used `boards`, accepted as legacy); nodes without a known page fall
+ * back to the first one. Older payloads get a single fresh page.
  *
  * @param {File} file Selected JSON file.
  * @param {Function} renderNodesFn Render callback.
@@ -189,11 +202,45 @@ function importData(file, renderNodesFn) {
       if (!data.nodes || !Array.isArray(data.nodes))
         throw new Error("Invalid file format");
       state.nodes.forEach((n) => deleteNodeDB(n.id));
-      state.nodes = data.nodes.map((node) => ({
-        ...node,
-        notes: node.notes || [],
-        extraParents: Array.isArray(node.extraParents) ? node.extraParents : [],
-      }));
+      const importedPages = (
+        Array.isArray(data.pages)
+          ? data.pages
+          : Array.isArray(data.boards)
+            ? data.boards
+            : []
+      ).filter((b) => b && b.id);
+      if (importedPages.length === 0) {
+        importedPages.push({
+          id:
+            typeof crypto !== "undefined" &&
+            typeof crypto.randomUUID === "function"
+              ? crypto.randomUUID()
+              : String(Date.now()),
+          title: "صفحه ۱",
+          createdAt: Date.now(),
+        });
+      }
+      state.pages = importedPages;
+      const byId = new Map(importedPages.map((b) => [String(b.id), b]));
+      const firstId = importedPages[0].id;
+      importedPages.forEach((b) => savePage(b));
+      state.nodes = data.nodes.map((node) => {
+        const { boardId: _legacy, ...rest } = node;
+        const pageId =
+          rest.pageId != null && byId.has(String(rest.pageId))
+            ? rest.pageId
+            : _legacy != null && byId.has(String(_legacy))
+              ? _legacy
+              : firstId;
+        return {
+          ...rest,
+          notes: rest.notes || [],
+          extraParents: Array.isArray(rest.extraParents)
+            ? rest.extraParents
+            : [],
+          pageId,
+        };
+      });
       state.nodes.forEach((n) => {
         if (n.parent == null && n.extraParents.length > 0) {
           n.parent = n.extraParents.shift();
@@ -201,8 +248,7 @@ function importData(file, renderNodesFn) {
       });
       state.nodes.forEach((n) => saveNode(n));
       history.push(state.nodes, "ورود داده");
-      renderNodesFn();
-      drawConnections();
+      setActivePage(firstId);
     } catch (error) {
       console.error("Import failed:", error);
     }

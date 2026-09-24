@@ -7,7 +7,7 @@
 import { state } from "./state.js";
 import { dom } from "./dom.js";
 import { CONFIG } from "./config.js";
-import { canConnect, canConnectRaw, isNodeHidden, showToast } from "./utils.js";
+import { canConnect, canConnectRaw, isNodeHidden, isActivePageNode, showToast } from "./utils.js";
 import { getRenderedEl, renderNodes } from "./renderer.js";
 import { history } from "./history.js";
 import {
@@ -448,6 +448,7 @@ function resolveOverlaps(movedNode) {
 
     for (const other of state.nodes) {
       if (other.id === movedNode.id) continue;
+      if (!isActivePageNode(other)) continue;
       if (isNodeHidden(other)) continue;
       const otherEl = getRenderedEl(other.id);
       if (!otherEl) continue;
@@ -518,6 +519,7 @@ function resolveOverlaps(movedNode) {
 function checkCurveOverlap(mX1, mX2, mY1, mY2, movedId) {
   for (const node of state.nodes) {
     if (!node.parent || node.id === movedId) continue;
+    if (!isActivePageNode(node)) continue;
     if (isNodeHidden(node)) continue;
 
     const parent = state.nodes.find((n) => n.id == node.parent);

@@ -24,6 +24,7 @@ import {
 } from "./drag.js";
 import { drawConnections } from "./connections.js";
 import { autoArrange, scrubPositions } from "./arrange.js";
+import { ensurePages, updateEmptyState } from "./pages.js";
 import { setupEvents } from "./events.js";
 
 /**
@@ -114,8 +115,8 @@ function handleCanvasMouseOut(e) {
 
 /**
  * Applies a history snapshot as the current state: deletes nodes absent
- * from the snapshot, normalizes notes/extra-parents, snaps coordinates to
- * pixels and re-renders.
+ * from the snapshot, normalizes notes/extra-parents/page assignment,
+ * snaps coordinates to pixels and re-renders.
  *
  * @param {Array<object>} nodesState Snapshot to apply.
  * @returns {void}
@@ -133,6 +134,11 @@ function applyState(nodesState) {
     if (node.parent == null && node.extraParents.length > 0) {
       node.parent = node.extraParents.shift();
     }
+    if (node.pageId == null && node.boardId != null) {
+      node.pageId = node.boardId;
+    }
+    delete node.boardId;
+    if (node.pageId == null) node.pageId = state.activePageId;
     if (finite(node.x)) node.x = Math.round(node.x);
     if (finite(node.y)) node.y = Math.round(node.y);
     saveNode(node);
@@ -140,7 +146,7 @@ function applyState(nodesState) {
   renderNodes();
   drawConnections();
 
-  dom.emptyState.style.display = nodesState.length === 0 ? "block" : "none";
+  updateEmptyState();
 }
 
 /**
@@ -183,15 +189,16 @@ function toggleDarkMode() {
 }
 
 /**
- * Exports the current graph as a dated JSON download.
+ * Exports the current graph (pages + nodes) as a dated JSON download.
  *
  * @returns {void}
  */
 function exportData() {
   try {
     const data = {
-      version: 1,
+      version: 3,
       exportDate: new Date().toISOString(),
+      pages: state.pages,
       nodes: state.nodes,
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], {
@@ -214,7 +221,8 @@ function exportData() {
  * Boots the application: restores preferences (dark mode and the done
  * filter — the filter must be applied *before* the first render so
  * projected threads draw correctly), loads and sanitizes persisted nodes,
- * restores or seeds history, and wires all event modules.
+ * ensures pages (migrating legacy nodes onto the first page), restores
+ * or seeds history, and wires all event modules.
  *
  * @returns {Promise<void>}
  */
@@ -240,15 +248,13 @@ async function init() {
       }
     });
 
+    await ensurePages();
+
     scrubPositions(state.nodes);
 
-    if (state.nodes.length === 0) {
-      dom.emptyState.style.display = "block";
-    } else {
-      dom.emptyState.style.display = "none";
-      renderNodes();
-      drawConnections();
-    }
+    updateEmptyState();
+    renderNodes();
+    drawConnections();
 
     const historyRestored = await history.load();
     if (!historyRestored) {

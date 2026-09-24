@@ -83,7 +83,7 @@ export function renderNotesList(node) {
         showNotesMenu(x, y, node);
         renderNodes();
       };
-      positionFloating(dom.confirmModal, x, y);
+      dom.confirmModal.classList.remove("hidden");
     });
     actions.appendChild(editBtn);
     actions.appendChild(delBtn);

@@ -8,7 +8,9 @@
  *
  * @type {object}
  * @property {IDBDatabase|null} db                  Opened IndexedDB handle (null until `initDB` resolves).
- * @property {Array<object>}    nodes               In-memory node graph (headers and tasks).
+ * @property {Array<object>}    nodes               In-memory node graph across all pages (each node carries `pageId`).
+ * @property {Array<object>}    pages              Pages (tabs); each `{id, title, createdAt}`.
+ * @property {string|null}      activePageId       Id of the currently visible page.
  * @property {HTMLElement|null} activeEl            DOM element of the node targeted by the most recent right-click.
  * @property {object|null}      dragData            Active drag session; shape depends on `type` (`move-node`, `new-connection`, `move-connection`). Null when idle.
  * @property {boolean}          isDrawing           Guard coalescing connection redraws into one per animation frame.
@@ -24,6 +26,8 @@
 export const state = {
   db: null,
   nodes: [],
+  pages: [],
+  activePageId: null,
   activeEl: null,
   dragData: null,
   isDrawing: false,

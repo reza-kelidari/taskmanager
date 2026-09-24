@@ -109,6 +109,7 @@ export function saveInput() {
       done: false,
       parent: null,
       notes: [],
+      pageId: state.activePageId,
       x: x - rect.left,
       y: y - rect.top + CONFIG.CANVAS_INITIAL_Y_OFFSET,
     };

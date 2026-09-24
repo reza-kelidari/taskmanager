@@ -1007,6 +1007,38 @@ body.dark-mode .chat-action-btn:hover {
   min-width: 130px;
 }
 
+/* Confirm dialog is always centered on the viewport */
+body #confirm-modal {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  width: 300px;
+  max-width: 90vw;
+  z-index: 2100;
+}
+
+/* Dim + blur the app behind the confirm dialog so the pending
+   deletion is unmistakable */
+body:has(#confirm-modal:not(.hidden)) > #canvas-wrapper,
+body:has(#confirm-modal:not(.hidden)) > .tools,
+body:has(#confirm-modal:not(.hidden)) > #tabs-bar,
+body:has(#confirm-modal:not(.hidden)) > #date-display {
+  filter: blur(3px) brightness(0.75);
+}
+
+/* Completed nodes are fully removed from the canvas while the filter is active */
+#details-comment-menu {
+  z-index: 2100;
+  min-width: 130px;
+}
+
+/* Page right-click menu floats above the tab bar */
+#page-menu {
+  z-index: 2100;
+  min-width: 130px;
+}
+
 /* Confirm dialog must stay above the details modal */
 #confirm-modal {
   z-index: 2100;
@@ -1032,6 +1064,153 @@ body.filter-active .node.header.filter-hidden {
   background: transparent;
   border: none;
   z-index: 1000;
+}
+
+/* Bottom tab bar (pages), level with the date display */
+#tabs-bar {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 60vw;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-md);
+}
+
+body.dark-mode #tabs-bar {
+  background: rgba(40, 40, 40, 0.85);
+}
+
+#tabs-list {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+#tabs-list::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 14px;
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  transition:
+    background var(--transition),
+    color var(--transition);
+}
+
+.tab:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+body.dark-mode .tab:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.tab.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.tab-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.tab-rename-input {
+  flex: 1;
+  min-width: 0;
+  width: 110px;
+  padding: 3px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.tab-rename-input:focus {
+  outline: none;
+}
+
+.tab.editing {
+  height: 30px;
+  padding: 0 6px;
+  gap: 6px;
+}
+
+.tab-rename-save {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.tab-rename-save:hover {
+  background: var(--accent-hover);
+}
+
+.tab-rename-save svg {
+  width: 12px;
+  height: 12px;
+  display: block;
+}
+
+#tab-add {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px dashed var(--border-strong);
+  background: none;
+  color: var(--text-secondary);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background var(--transition),
+    color var(--transition);
+}
+
+#tab-add:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-primary);
+}
+
+body.dark-mode #tab-add:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 /* ==================== Canvas ==================== */

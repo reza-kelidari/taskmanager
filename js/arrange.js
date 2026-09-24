@@ -7,7 +7,7 @@
 import { state } from "./state.js";
 import { dom } from "./dom.js";
 import { CONFIG } from "./config.js";
-import { finite, isNodeHidden, nodeParentIds, showToast } from "./utils.js";
+import { finite, isNodeHidden, isActivePageNode, nodeParentIds, showToast } from "./utils.js";
 import { errorReporter } from "./error.js";
 import { saveNode } from "./db.js";
 import { history } from "./history.js";
@@ -67,7 +67,8 @@ export function scrubPositions(nodesList) {
 }
 
 /**
- * Applies the automatic layout to all (non-filtered) nodes.
+ * Applies the automatic layout to all (non-filtered) nodes of the active
+ * page.
  *
  * The layout always runs on the primary-parent forest. When the done-task
  * filter is active, completed tasks and fully-done non-root headers (see
@@ -85,9 +86,11 @@ export function autoArrange() {
   const allNodes = state.nodes;
   const filterOn = document.body.classList.contains("filter-active");
 
+  const pageNodes = allNodes.filter(isActivePageNode);
+
   const layoutNodes = filterOn
-    ? allNodes.filter((n) => !isNodeHidden(n))
-    : allNodes;
+    ? pageNodes.filter((n) => !isNodeHidden(n))
+    : pageNodes.slice();
 
   if (layoutNodes.length === 0) return;
 

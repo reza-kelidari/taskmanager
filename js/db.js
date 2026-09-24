@@ -11,8 +11,8 @@ import { errorReporter } from "./error.js";
 
 /**
  * Opens (or creates) the IndexedDB database and restores the saved canvas
- * pan offset from localStorage. Version 2 adds the `history` store for
- * the undo/redo stack (v1 only had `nodes`).
+ * pan offset from localStorage. Version 4 renames the `boards` store to
+ * `pages` (v3 added it as `boards`, v2 added `history`, v1 had `nodes`).
  *
  * @returns {Promise<void>} Resolves when the DB handle is ready.
  * @rejects {Error} When the database cannot be opened.
@@ -20,14 +20,30 @@ import { errorReporter } from "./error.js";
 export function initDB() {
   return new Promise((resolve, reject) => {
     try {
-      const request = indexedDB.open("TaskManagerDB", 2);
+      const request = indexedDB.open("TaskManagerDB", 4);
       request.onupgradeneeded = (e) => {
         const database = e.target.result;
+        const tx = e.target.transaction;
         if (!database.objectStoreNames.contains("nodes")) {
           database.createObjectStore("nodes", { keyPath: "id" });
         }
         if (!database.objectStoreNames.contains("history")) {
           database.createObjectStore("history", { keyPath: "id" });
+        }
+        if (!database.objectStoreNames.contains("pages")) {
+          const pages = database.createObjectStore("pages", { keyPath: "id" });
+          if (database.objectStoreNames.contains("boards")) {
+            const oldReq = tx.objectStore("boards").getAll();
+            oldReq.onsuccess = () => {
+              (oldReq.result || []).forEach((b) => {
+                try {
+                  pages.put(b);
+                } catch (_) {
+                  /* best-effort migration */
+                }
+              });
+            };
+          }
         }
       };
       request.onsuccess = (e) => {
@@ -157,6 +173,77 @@ export function loadHistory() {
     } catch (error) {
       errorReporter.report(error, { context: "loadHistory" });
       resolve(null);
+    }
+  });
+}
+
+/**
+ * Upserts a page record (`{id, title, createdAt}`).
+ *
+ * @param {object} page Page record (keyed by `id`).
+ * @returns {Promise<boolean>} True when the write was accepted.
+ */
+export function savePage(page) {
+  return new Promise((resolve) => {
+    try {
+      if (!state.db || !state.db.objectStoreNames.contains("pages")) {
+        resolve(false);
+        return;
+      }
+      const tx = state.db.transaction("pages", "readwrite");
+      tx.objectStore("pages").put(page);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => resolve(false);
+    } catch (error) {
+      errorReporter.report(error, { context: "savePage" });
+      resolve(false);
+    }
+  });
+}
+
+/**
+ * Loads every page record from the store.
+ *
+ * @returns {Promise<Array<object>>} All stored pages; empty array on failure.
+ */
+export function loadPages() {
+  return new Promise((resolve) => {
+    try {
+      if (!state.db || !state.db.objectStoreNames.contains("pages")) {
+        resolve([]);
+        return;
+      }
+      const tx = state.db.transaction("pages", "readonly");
+      const request = tx.objectStore("pages").getAll();
+      request.onsuccess = (e) => resolve(e.target.result || []);
+      request.onerror = () => resolve([]);
+    } catch (error) {
+      errorReporter.report(error, { context: "loadPages" });
+      resolve([]);
+    }
+  });
+}
+
+/**
+ * Deletes a page record by id.
+ *
+ * @param {string} id Page id.
+ * @returns {Promise<boolean>} True when the delete was accepted.
+ */
+export function deletePageDB(id) {
+  return new Promise((resolve) => {
+    try {
+      if (!state.db || !state.db.objectStoreNames.contains("pages")) {
+        resolve(false);
+        return;
+      }
+      const tx = state.db.transaction("pages", "readwrite");
+      tx.objectStore("pages").delete(id);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => resolve(false);
+    } catch (error) {
+      errorReporter.report(error, { context: "deletePageDB", pageId: id });
+      resolve(false);
     }
   });
 }

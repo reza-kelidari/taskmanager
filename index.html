@@ -8,7 +8,7 @@
       content="مدیریت وظایف روزانه با رابط کاربری بصری"
     />
     <title>مدیریت وظایف روزانه</title>
-    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/style.css?v=3" />
   </head>
   <body dir="rtl" lang="fa">
     <div class="tools" role="toolbar" aria-label="ابزارها">
@@ -431,6 +431,27 @@
     </div>
 
     <div id="date-display" aria-live="polite">تاریخ شمسی</div>
+
+    <div id="tabs-bar" role="tablist" aria-label="صفحه‌ها">
+      <div id="tabs-list"></div>
+      <button id="tab-add" title="صفحه جدید" aria-label="صفحه جدید">+</button>
+    </div>
+
+    <div
+      id="page-menu"
+      class="context-menu hidden"
+      role="menu"
+      aria-label="منوی صفحه"
+    >
+      <div
+        class="menu-item"
+        data-action="delete-page"
+        role="menuitem"
+        tabindex="0"
+      >
+        حذف
+      </div>
+    </div>
 
     <div
       id="context-menu"
